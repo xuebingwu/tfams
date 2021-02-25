@@ -421,9 +421,10 @@ else:
             #translation = unicode(record.seq.translate())
             translation = str(record.seq.translate())
             bits = record.description.split(' ')
-            for i in bits:
-                if 'gene_symbol' in i:
-                    record.name = i.split(':')[-1]
+            record.name = bits[0] #xw, use ENST so that no two records are the same
+            #for i in bits:
+            #    if 'gene_symbol' in i:
+            #        record.name = i.split(':')[-1]
             if record.name in translation_dict:        # if multiple isoforms, keep the longer one
                 if len(translation) > len(translation_dict[record.name]):
                     translation_dict[record.name] = translation

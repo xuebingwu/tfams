@@ -1,5 +1,5 @@
-input_dir = '/media/backup16tb/xuebing/PXD006675/LV3'
-output_dir = '/media/backup16tb/xuebing/PXD006675/LV3'
+input_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/test2'
+output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/test2'
 transcriptome = './reference/human.CDS.fa'
 
 """
