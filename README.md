@@ -15,7 +15,7 @@ The pipeline is written in Python 3 and requires the following packages:
 
 To run MaxQuant from commandline, follow the instructions here to download ```MaxQuant``` and install ```.NET CORE```: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
 
-Once installed, please update the following line in the script ```msdaas.py``` with path to ```MaxQuantCmd.exe```:
+Once installed, please update the following line in the script ```tfams.py``` with path to ```MaxQuantCmd.exe```:
 
 ```
 MaxQuantCmd="dotnet MaxQuant/bin/MaxQuantCmd.exe"

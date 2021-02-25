@@ -136,6 +136,7 @@ for i,j in gb:
         d['protein'] = ref_dp['protein']
         d['base_sequence'] = base_sequence
         d['modified_sequence'] = modified_sequence
+        d['DP Time Difference'] = ref_dp['DP Time Difference']
         D = D.append(d)
     #else:
     #    print("substitution not found in matchedFeatures.txt: "+str([charge, base_sequence, modified_sequence]))

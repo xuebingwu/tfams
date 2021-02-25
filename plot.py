@@ -189,8 +189,8 @@ data.to_pickle(output_dir+'/unique_substitutions_count_matrix')
 log_data = np.log2(data+1)
 plot_matrix(log_data,output_dir+'/subs-log-count-plot.pdf')
 
-print('detect - substitution count table: '+output_dir+'/subs-count.txt')
-print('detect - plot: '+output_dir+'/subs-log-count-plot.pdf')
+print('plot - substitution count table: '+output_dir+'/subs-count.txt')
+print('plot - '+output_dir+'/subs-log-count-plot.pdf')
 
 #m = log_data.max().max()
 

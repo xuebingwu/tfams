@@ -1,6 +1,6 @@
-input_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/test2'
-output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/test2'
-transcriptome = './reference/human.CDS.fa'
+input_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/Ecoli-dLon'
+output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/Ecoli-dLon'
+transcriptome = '/home/xw2629/xuebing/amino-acid-substitution/tfams/reference/ecoli.CDS.fa'
 
 """
 PARAMETERS FOR DETECT
