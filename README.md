@@ -1,7 +1,7 @@
-# MS-DAAS
-## Detecting Amino Acid Substitutions from Mass Spectrometry Data
+# TFAMS
+## Translation Fidelity Analysis with Mass Spectrometry Data
 
-This is a pipeline for detecting amino acid substitutions from mass spectrometry data. The pipeline provides a wrapper for streamlining MaxQuant dependent peptide search in Linux and subsequent detection of amino acid substitutions. The substitution detection part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/), which was written in Python 2 and used for analyzing E.coli and yeast data.
+This is a pipeline for quantifying translation fidelity with mass spectrometry data. The pipeline provides a wrapper for streamlining MaxQuant dependent peptide search in Linux and subsequent detection and quantification of amino acid substitutions. The latter part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/), which was written in Python 2 and used for analyzing E.coli and yeast data.
 
 ## Requirement
 
@@ -31,7 +31,7 @@ Transcriptome: The coding sequence (CDS) of all mRNAs in fasta format. Can be do
 ## Usage
 
 ```
-usage: msdaas.py [-h] [--input INPUT_DIR] [--output OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--xml TEMPLATE_XML]
+usage: tfams.py [-h] [--input INPUT_DIR] [--output OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--xml TEMPLATE_XML]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -48,6 +48,6 @@ optional arguments:
 Analyze human data with default settings: 
 
 ```
-python msdaas.py --input raw_file_folder
+python tfams.py --input raw_file_folder
 ``` 
 
