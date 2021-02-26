@@ -46,10 +46,10 @@ optional arguments:
   -h, --help            show this help message and exit
   --input INPUT_DIR     Required. Path to a folder with raw data (*.raw)
   --output OUTPUT_DIR   Output folder name. Default: same as input
-  --proteome PROTEOME   path to proteome fasta file (default: ./reference/human.protein.fa)
+  --proteome PROTEOME   Path to proteome fasta file
   --transcriptome TRANSCRIPTOME
-                        path to transcriptome fasta file (default: ./reference/human.CDS.fa)
-  --xml TEMPLATE_XML    A template xml file (default: ./template_xml/mqpar-human.xml)
+                        Path to transcriptome (CDS only) fasta file
+  --xml TEMPLATE_XML    A template xml file
 ``` 
 
 ### Example
