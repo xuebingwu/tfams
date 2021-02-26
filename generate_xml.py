@@ -8,6 +8,10 @@ Can also change proteome (--proteome): fastaFilePath and output folder (--output
 
 Author: Xuebing Wu (xw2629@columbia.edu)
 
+TODO
+    1. add option --threads
+    2. add option to change sample name and fraction name
+
 '''
 
 import argparse
@@ -82,7 +86,7 @@ def generate_xml(template_xml,raw_dir,output_dir,proteome):
             fout.write(line)
     fin.close()
     fout.close()
-    print(" - MaxQuant xml file created: "+os.path.abspath(output_dir)+'/mqpar.xml')
+    print("- MaxQuant xml file created: "+os.path.abspath(output_dir)+'/mqpar.xml')
     return nSample
 
 if __name__ == "__main__":

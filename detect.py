@@ -1,3 +1,7 @@
+'''
+TODO: allow the generation of proteome from transcriptome
+'''
+
 import pandas as pd
 import numpy as np
 import re
@@ -343,10 +347,10 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
             bp_i.append(c.loc[c.index[0],'Intensity'])
     subs['DP Intensity'] = dp_i
     subs['BP Intensity'] = bp_i
-    subs['Error rate'] = subs['DP Intensity']/subs['BP Intensity']
+    subs['Error rate'] = subs['DP Intensity']/(subs['BP Intensity']+subs['DP Intensity'])
     #plt.hist(np.log10(subs['Error rate']),bins=100)
 
-print('detect - generate codon <-> aa table')
+#print('- generate codon <-> aa table')
 warnings.filterwarnings("ignore")
 bases = 'TCAG'
 codons = [a+b+c for a in bases for b in bases for c in bases]
@@ -357,7 +361,7 @@ codon_table = get_codon_table()
 inverted_codon_table = get_inverted_codon_table()
 inverted_codon_table['L'] = inverted_codon_table['L'] + inverted_codon_table['I']
 
-print('detect - generate table of aa subs <-> mass change')
+#print('- generate table of aa subs <-> mass change')
 
 MW_dict = {"G": 57.02147, 
             "A" : 71.03712, 
@@ -402,11 +406,12 @@ for k,v in tmp.items(): # unifies I and L
         
 sorted_subs, sorted_sub_masses = zip(*sorted(subs_dict.items(), key= lambda x: x[1]))
 
-print("detect - Loads CDS fasta file and builds records of genes within it")
 if os.path.isfile(transcriptome+'.pickle'):
+    print("- loading processed transcriptome from "+transcriptome+".pickle")
     with open(transcriptome+'.pickle', 'rb') as f:
         boundaries_aa,W_aa,sa,W_aa_ambiguous,sa_ambiguous,names_list,record_dict = pickle.load(f)
 else:
+    print("- Loading transcriptome")
     record_list = []
     translated_record_list = []
     names_list = []
@@ -438,9 +443,9 @@ else:
                 boundaries_aa.append(boundaries_aa[-1]+len(translation))
                 W_codons.extend(list(codonify(record.seq)))
 
-    print("detect - number of translated genes: "+str(len(translation_dict)))
+    print(" - number of ORFs: "+str(len(translation_dict)))
 
-    print("detect - creating suffix array for proteins")
+    print(" - creating suffix array for proteins")
 
     boundaries_aa = np.array(boundaries_aa[1:]) # an array annotating the genes' cumulative length
     W_aa = ''.join(translated_record_list)
@@ -448,7 +453,7 @@ else:
     W_aa_ambiguous = W_aa.replace('I','L')
     sa_ambiguous = suffix_array(W_aa_ambiguous)
 
-    # save data
+    print(" - saving processed transcriptome for future use")
     with open(transcriptome+'.pickle', 'wb') as f:
         pickle.dump([boundaries_aa,W_aa,sa,W_aa_ambiguous,sa_ambiguous,names_list,record_dict], f)
 
@@ -468,7 +473,7 @@ dp = pd.concat( chunk[pd.notnull(chunk['DP Mass Difference'])] for chunk in df_i
 #dp = dp[~dp['Raw file'].str.contains('|'.join(excluded_samples))]
 dp.reset_index(drop=True, inplace=True)
       
-print("detect - dependent peptides: "+str(len(dp)))
+print("- dependent peptides: "+str(len(dp)))
 
 dp['DPMD'] = dp['DP Mass Difference']
 dp['DPAA_noterm'] = dp['DP Probabilities'].map(refine_localization_probabilities)
@@ -477,8 +482,8 @@ dp['cterm'] = dp['DP Probabilities'].map(c_term_probability)
 dp['prot_nterm'] = dp['DP Base Sequence'].map(is_prot_nterm) # Does the peptide come from the N-term of the protein
 dp['prot_cterm'] = dp['DP Base Sequence'].map(is_prot_cterm)
 
-print("detect - dependent peptides from N-term: "+str(sum(dp['prot_nterm']==True)))
-print("detect - dependent peptides from C-term: "+str(sum(dp['prot_cterm']==True)))
+print("- dependent peptides from N-term: "+str(sum(dp['prot_nterm']==True)))
+print("- dependent peptides from C-term: "+str(sum(dp['prot_cterm']==True)))
 
 danger_mods = pd.read_pickle('danger_mods') #defined in randomize_substutions.py
 dp['danger'] = False
@@ -506,7 +511,7 @@ for mod in danger_mods.iterrows():
     
     dp.loc[site_filter & term_filter & mass_filter, 'danger'] = True
 
-print('detect - dependent peptides potential PTM: '+str(sum(dp['danger']==True))+' of '+str(len(dp)))
+print('- dependent peptides potential PTM: '+str(sum(dp['danger']==True))+' of '+str(len(dp)))
 
 dp['substitution'] = False
 for i in sorted(subs_dict.keys()):
@@ -569,14 +574,13 @@ subs = subs.iloc[:cut_off+1]
 #%%
 subs = subs[~subs.decoy]
 
-print("detect - calculate error rate")
-calculate_error_rate(path_to_evidence,path_to_allPeptides,subs)
-print('detect - median error rate: '+str(np.nanmedian(subs['Error rate'])))
-print('detect - median error rate (near-cognate): '+str(np.nanmedian(subs[subs['mispairing']==1]['Error rate'])))
+#print("- calculate error rate")
+#calculate_error_rate(path_to_evidence,path_to_allPeptides,subs)
+#print('- median error rate: '+str(np.nanmedian(subs['Error rate'])))
+#print('- median error rate (near-cognate): '+str(np.nanmedian(subs[subs['mispairing']==1]['Error rate'])))
 
-print("detect - number of substitutions: "+str(len(subs)))
-print("detect - "+str(round(100*np.sum(subs['mispairing'])/len(subs),1))+"% substitutions are near-cognate errors")
-
+print("- number of substitutions: "+str(len(subs)))
+print("- substitutions likely caused by near-cognate errors: "+str(round(np.sum(subs['mispairing']))) + "("+str(round(100*np.sum(subs['mispairing'])/len(subs),1))+"%)" )
 
 subs.to_pickle(os.path.join(output_dir,'subs'))
 subs.to_csv(os.path.join(output_dir,'subs.csv'))

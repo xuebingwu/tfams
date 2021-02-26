@@ -7,7 +7,13 @@ Xuebing Wu
 
 '''
 
+# Required: please update the path to MaxQuant binary
 MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
+
+# Option: setup default files
+proteome='./reference/human.protein.fa'
+transcriptome='./reference/human.CDS.fa'
+template_xml='./template_xml/mqpar-human.xml'
 
 import argparse
 import os
@@ -21,20 +27,18 @@ parser.add_argument("--input", dest='input_dir', action='store',default='NA',
 parser.add_argument("--output", dest='output_dir', action='store',default='NA',
                      help='Output folder name. Default: same as input')
 
-parser.add_argument("--proteome", dest='proteome', action='store',default='./reference/human.protein.fa',
-                     help='Path to proteome fasta file (default: ./reference/human.protein.fa)')
+parser.add_argument("--proteome", dest='proteome', action='store',default=proteome,
+                     help='Path to proteome fasta file')
 
-parser.add_argument("--transcriptome", dest='transcriptome', action='store',default='./reference/human.CDS.fa',
-                     help='Path to transcriptome (CDS only) fasta file (default: ./reference/human.CDS.fa)')
+parser.add_argument("--transcriptome", dest='transcriptome', action='store',default=transcriptome,
+                     help='Path to transcriptome (CDS only) fasta file')
 
-parser.add_argument("--xml", dest='template_xml', action='store',default='./template_xml/mqpar-human.xml',
-                     help='A template xml file (default: ./template_xml/mqpar-human.xml)')
+parser.add_argument("--xml", dest='template_xml', action='store',default=template_xml,
+                     help='A template xml file')
     
 args = parser.parse_args()
 
 
-
-# data downloaded from http://ftp.ensembl.org/pub/release-103/fasta/homo_sapiens/cdna/
 if args.transcriptome == 'ecoli':
     args.transcriptome = os.path.abspath('./reference/ecoli.CDS.fa')
 
@@ -50,7 +54,6 @@ else:
 
 if args.output_dir == 'NA':
     args.output_dir = args.input_dir
-    print('Outputs will be written into the input folder: '+args.output_dir)
     
 # create params.py
 f = open("params.py", "w")
@@ -60,21 +63,28 @@ f.write("transcriptome = '"+args.transcriptome+"'\n")
 f.close()    
 os.system('cat params.core >> params.py')
 
+print("Path to files:")
+print("- proteome      : "+args.proteome)
+print("- transcriptome : "+args.transcriptome)
+print("- template xml  : "+args.template_xml)
+print("- input         : "+args.input_dir)
+print("- output        : "+args.output_dir)
+
 if not os.path.isdir(args.output_dir):
     print('Creating output directory: '+args.output_dir)
     os.mkdir(args.output_dir)
 
 if os.path.isfile(args.output_dir+'/combined/txt/allPeptides.txt'):
     print("MaxQuant search results detected in the output folder "+args.output_dir)
-    print("To run MaxQuant again, please change output directory")
+    print("- to run MaxQuant again, please change output directory")
 else:
     print("Generate MaxQuant parameter file (xml)")
     generate_xml(args.template_xml,args.input_dir,args.output_dir,args.proteome)
     print("MaxQuant search of dependent peptides")
     cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
-    print(cmd)
+    print('- '+cmd)
     os.system(cmd)
-print("Run detection")
+print("Detection and filtering")
 import detect
 import quantify
 import plot

@@ -73,7 +73,7 @@ subs['Base m/z'] = subs['m/z'] - (subs['DPMD']/subs['Charge'])
 mf = pd.read_csv(path_to_matched_features,sep = '\t')
 mf.replace(0, np.nan, inplace = True)
 
-print('detect - '+str(len(mf))+' lines loaded from matchedFeatures.txt')
+#print('- '+str(len(mf))+' lines loaded from matchedFeatures.txt')
 
 pep_head = pd.read_csv(path_to_peptides,
                   sep = '\t', 
@@ -142,10 +142,10 @@ for i,j in gb:
     #    print("substitution not found in matchedFeatures.txt: "+str([charge, base_sequence, modified_sequence]))
 
 if len(D) > 0:
-    print("quantify - "+str(len(D))+" unique substitutions can be quantified")
-    D['Ratio'] = D['DP']/D['Base']
-    print('quantify - median error rate: '+str(np.median(D['Ratio'])))
-    print('quantify - median error rate (near-cognate): '+str(np.median(D[D['mispairing']==1]['Ratio'])))
+    print("- unique substitutions quantified: "+str(len(D)))
+    D['Ratio'] = D['DP']/(D['Base']+D['DP'])
+    print('- median error rate: '+str(np.median(D['Ratio'])))
+    print('- median error rate (near-cognate): '+str(np.median(D[D['mispairing']==1]['Ratio'])))
     D['Experiment'] = D.index.str.extract('Intensity ([\w-]*)', expand=False).fillna('')
     D['substitution'] = float('NaN')
     D.loc[pd.notnull(D['codon']),'substitution'] = D[pd.notnull(D['codon'])].apply(lambda x: x['codon']+' to '+x['destination'],axis=1)
