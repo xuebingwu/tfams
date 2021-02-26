@@ -21,7 +21,7 @@ from generate_xml import *
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--input", dest='input_dir', action='store',default='NA',
+parser.add_argument("--input", dest='input_dir', action='store',default='NA',required=True,
                      help='Required. Path to a folder with raw data (*.raw)')
 
 parser.add_argument("--output", dest='output_dir', action='store',default='NA',

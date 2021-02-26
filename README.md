@@ -40,7 +40,7 @@ template_xml='./template_xml/mqpar-human.xml'
 ## Usage
 
 ```
-usage: tfams.py [-h] [--input INPUT_DIR] [--output OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--xml TEMPLATE_XML]
+usage: tfams.py [-h] --input INPUT_DIR [--output OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--xml TEMPLATE_XML]
 
 optional arguments:
   -h, --help            show this help message and exit
