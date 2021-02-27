@@ -21,18 +21,18 @@ import sys
 
 def valid_raw_folder(raw_dir):
     # check if the raw_dir folder exists and has *.raw files
-    nSample=0
+    # return the number of *.raw files. -1: folder not exist
+    nSample=-1
     if os.path.isdir(raw_dir):
+        nSample=0
         files = os.listdir(raw_dir)
         for file in files:
             if file[-4:] == ".raw":
                 nSample = nSample + 1
         if nSample == 0:
-            print("ERROR: no *.raw files found in the input folder "+raw_dir,file=sys.stderr)
-            exit()
+            print("WARNING: no *.raw files found in the input folder "+raw_dir,file=sys.stderr)
     else:
-        print("ERROR: raw file folder doesn't exist: "+raw_dir,file=sys.stderr)
-        exit()
+        print("WARNING: raw file folder doesn't exist: "+raw_dir,file=sys.stderr)
     return nSample
         
 def generate_xml(template_xml,raw_dir,output_dir,proteome):

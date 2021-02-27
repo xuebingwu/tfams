@@ -50,7 +50,9 @@ if args.input_dir == 'NA':
     exit(1)
 else:
     args.input_dir = os.path.abspath(args.input_dir)
-    nSample = valid_raw_folder(args.input_dir) # will exit if no *.raw files found
+    nSample = valid_raw_folder(args.input_dir)
+    if nSample < 0:
+        exit()
 
 if args.output_dir == 'NA':
     args.output_dir = args.input_dir
@@ -67,8 +69,9 @@ print("Path to files:")
 print("- proteome      : "+args.proteome)
 print("- transcriptome : "+args.transcriptome)
 print("- template xml  : "+args.template_xml)
-print("- input         : "+args.input_dir)
 print("- output        : "+args.output_dir)
+print("- input         : "+args.input_dir)
+print("                  " + str(nSample) + " raw file(s)")
 
 if not os.path.isdir(args.output_dir):
     print('Creating output directory: '+args.output_dir)
