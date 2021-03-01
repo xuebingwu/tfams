@@ -99,4 +99,6 @@ import quantify
 import plot
 
 # frameshift
+if not os.path.isdir(args.output_dir+'/frameshift'):
+    os.mkdir(args.output_dir+'/frameshift')
 frameshift_detection(args.input_dir,args.output_dir+'/frameshift',args.transcriptome,args.template_xml,args.output_dir+'/combined/txt/peptides.txt')
