@@ -350,6 +350,8 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
     subs['Error rate'] = subs['DP Intensity']/(subs['BP Intensity']+subs['DP Intensity'])
     #plt.hist(np.log10(subs['Error rate']),bins=100)
 
+
+    
 #print('- generate codon <-> aa table')
 warnings.filterwarnings("ignore")
 bases = 'TCAG'

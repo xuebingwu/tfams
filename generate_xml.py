@@ -66,7 +66,8 @@ def generate_xml(template_xml,raw_dir,output_dir,proteome):
             fout.write("\t</experiments>\n")
             fout.write("\t<fractions>\n")
             for i in range(nSample):
-                fout.write("\t\t<short>32767</short>\n")
+                #fout.write("\t\t<short>32767</short>\n")
+                fout.write("\t\t<short>"+str(i+1)+"</short>\n")
             fout.write("\t</fractions>\n")
             fout.write("\t<ptms>\n")
             for i in range(nSample):

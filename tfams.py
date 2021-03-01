@@ -5,6 +5,8 @@ Core algorithm/scripts from https://github.com/ernestmordret/substitutions/ by E
 
 Xuebing Wu
 
+TODO: add frameshifting error detection?
+
 '''
 
 # Required: please update the path to MaxQuant binary
@@ -18,6 +20,33 @@ template_xml='./template_xml/mqpar-human.xml'
 import argparse
 import os
 from generate_xml import *
+from Bio import SeqIO
+
+
+def transcriptome2proteome(transcriptome,output_tag):
+    # note that this doesn't include 3' UTR
+    if not os.path.isfile(transcriptome):
+        return -1 # file not found
+    out0 = open(output_tag+'-proteome-frame0.fa','w')
+    out1 = open(output_tag+'-proteome-frame1.fa','w')
+    out2 = open(output_tag+'-proteome-frame2.fa','w')
+    for record in SeqIO.parse(open(transcriptome,'rU'),'fasta'):
+        record.seq = record.seq.upper()    
+        if len(record.seq)%3 == 0 and record.seq[:3] in {'ATG','GTG','TTG','ATT','CTG'} and record.seq[-3:].translate()=='*':
+            header = '>'+record.description.split(' ')[0]
+            translation = str(record.seq.translate()[:-1]).replace('*','R')
+            if len(translation)>0:
+                out0.write(header+'\n'+translation+'\n')
+            translation = str(record.seq[1:].translate()[:-1]).replace('*','R')
+            if len(translation)>0:
+                out1.write(header+'\n'+translation+'\n')
+            translation = str(record.seq[2:].translate()[:-1]).replace('*','R')
+            if len(translation)>0:
+                out2.write(header+'\n'+translation+'\n')
+    out0.close()
+    out1.close()
+    out2.close()
+    return 0
 
 parser = argparse.ArgumentParser()
 
@@ -37,6 +66,10 @@ parser.add_argument("--xml", dest='template_xml', action='store',default=templat
                      help='A template xml file')
     
 args = parser.parse_args()
+
+#transcriptome2proteome(args.transcriptome,"human")
+
+#exit()
 
 
 if args.transcriptome == 'ecoli':
@@ -72,6 +105,7 @@ print("- template xml  : "+args.template_xml)
 print("- output        : "+args.output_dir)
 print("- input         : "+args.input_dir)
 print("                  " + str(nSample) + " raw file(s)")
+
 
 if not os.path.isdir(args.output_dir):
     print('Creating output directory: '+args.output_dir)

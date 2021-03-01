@@ -1,5 +1,5 @@
-input_dir = '/home/xw2629/proteomics/PXD006675/LA3'
-output_dir = '/home/xw2629/proteomics/PXD006675/LA3'
+input_dir = '/media/backup16tb/xuebing/PXD010154/heart'
+output_dir = '/media/backup16tb/xuebing/PXD010154/heart'
 transcriptome = './reference/human.CDS.fa'
 
 """

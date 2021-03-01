@@ -29,6 +29,16 @@ def get_BP_intensities(peptide, charge):
     y = x[x['Charge']==charge].groupby('Experiment')['Intensity'].sum()
     return y.reindex(samples)
 
+def summary_stats():
+    # peptide count: total number of peptides, dependent peptides, peptides with near cognate error
+    # samee but intensity
+    allpep = pd.read_csv(path_to_allPeptides, sep='\t')
+    n_allpep = len(allpep)
+    n_deppep = sum(allpep['DP Mass Difference']!="")
+    i_allpep = allpep['Intensity'].sum()
+    i_deppep = allpep[allpep['DP Mass Difference']!=""]['Intensity'].sum()
+    
+    
 columns_evidence = [u'Raw file', u'Retention time', u'Calibrated retention time', u'Intensity', u'Charge',u'Experiment']
 
 
