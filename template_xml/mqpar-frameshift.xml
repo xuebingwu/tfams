@@ -2,7 +2,7 @@
 <MaxQuantParams xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
    <fastaFiles>
       <FastaFileInfo>
-         <fastaFilePath>/home/xw2629/xuebing/amino-acid-substitution/tfams/reference/human-proteome-frame1.fa</fastaFilePath>
+         <fastaFilePath>C:\Users\wuxb0\OneDrive - cumc.columbia.edu\Documents\software\MaxQuant_1.6.17.0\MaxQuant\uniprot-proteome_UP000005640.fasta</fastaFilePath>
          <identifierParseRule>>.*\|(.*)\|</identifierParseRule>
          <descriptionParseRule>>(.*)</descriptionParseRule>
          <taxonomyParseRule></taxonomyParseRule>
@@ -119,7 +119,7 @@
    <emailAddress></emailAddress>
    <smtpHost></smtpHost>
    <emailFromAddress></emailFromAddress>
-   <fixedCombinedFolder>/home/xw2629/xuebing/amino-acid-substitution/raw-data/test-frameshift</fixedCombinedFolder>
+   <fixedCombinedFolder></fixedCombinedFolder>
    <fullMinMz>-1.79769313486232E+308</fullMinMz>
    <fullMaxMz>1.79769313486232E+308</fullMaxMz>
    <sendEmail>False</sendEmail>
@@ -131,7 +131,7 @@
    <useDotNetCore>True</useDotNetCore>
    <profilePerformance>False</profilePerformance>
    <filePaths>
-      <string>/home/xw2629/xuebing/amino-acid-substitution/raw-data/test-frameshift/Instrument1_sample01_121115_Fr01.raw</string>
+      <string>C:\Users\wuxb0\Downloads\MM1000_Fusion_AC16_1_Control.raw</string>
    </filePaths>
    <experiments>
       <string></string>

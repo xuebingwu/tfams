@@ -1,7 +1,7 @@
 # TFAMS
 ## Translation Fidelity Analysis with Mass Spectrometry Data
 
-This is a pipeline for quantifying translation fidelity with mass spectrometry data. The pipeline provides a wrapper for streamlining MaxQuant dependent peptide search in Linux and subsequent detection and quantification of amino acid substitutions, focusing on near-cognate substitutions likely caused by misdecoding. The detection/quantification part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/).
+TFAMS is a pipeline for analyzing translation fidelity with mass spectrometry data, focusing on the detection and quantificaiton of amino acid substitutions and frameshift peptides. The amino acid substitution part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/).
 
 ## Requirement / setup
 
