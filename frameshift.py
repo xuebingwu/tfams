@@ -10,7 +10,7 @@ MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 
 # Option: setup default files
 transcriptome='./reference/human.CDS.fa'
-template_xml='./template_xml/mqpar.xml'
+template_xml='./template_xml/mqpar-frameshift.xml'
 
 import argparse
 import os
@@ -46,12 +46,18 @@ def transcriptome2proteome(transcriptome):
     out2.close()
     return 0
 
-def frameshift_detection(input_dir,output_dir,transcriptome,template_xml):
+def frameshift_detection(input_dir,output_dir,transcriptome,template_xml,frame0_peptides):
     if not ( os.path.isfile(transcriptome+'-proteome-frame0.fa') and os.path.isfile(transcriptome+'-proteome-frame1.fa') and os.path.isfile(transcriptome+'-proteome-frame2.fa')):
         print('Creating proteome from transcriptome: '+transcriptome)
         transcriptome2proteome(transcriptome)
-
-    for i in range(3):
+    
+    # skp frame0 run if path to peptides.txt is provided
+    if os.path.isfile(frame0_peptides):
+        n = 2
+    else:
+        n = 3
+        
+    for i in range(n):
         i=2-i # run frame 2, then frame 1, then frame 0 (slowest)
         if not os.path.isfile(output_dir+'/frame'+str(i)+'/combined/proc/Finish_writing_tables 11.finished.txt'):
             print("MaxQuant search in frame "+str(i))
@@ -67,7 +73,11 @@ def frameshift_detection(input_dir,output_dir,transcriptome,template_xml):
             print("MaxQuant analysis has been completed for frame "+str(i))
 
     # load frame0 peptides
-    pep0 = pd.read_csv(output_dir+'/frame0/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
+    if os.path.isfile(frame0_peptides):
+        pep0 = pd.read_csv(frame0_peptides,sep = '\t',index_col='Sequence')
+    else:
+        pep0 = pd.read_csv(output_dir+'/frame0/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
+        
     pep1 = pd.read_csv(output_dir+'/frame1/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
     pep2 = pd.read_csv(output_dir+'/frame2/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
 
@@ -101,18 +111,19 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--input", dest='input_dir', action='store',default='NA',required=True,
-                         help='Required. Path to a folder with raw data (*.raw)')
+    parser.add_argument('input_dir',help='Required. Path to a folder with raw data (*.raw)')
 
-    parser.add_argument("--output", dest='output_dir', action='store',default='NA',
+    parser.add_argument("--output-dir",action='store',default='NA',
                          help='Output folder name. Default: same as input')
 
-    parser.add_argument("--transcriptome", dest='transcriptome', action='store',default=transcriptome,
+    parser.add_argument("--transcriptome", action='store',default=transcriptome,
                          help='Path to transcriptome (CDS only) fasta file')
 
-    parser.add_argument("--xml", dest='template_xml', action='store',default=template_xml,
+    parser.add_argument("--template-xml", dest='template_xml', action='store',default=template_xml,
                          help='A template xml file')
 
+    parser.add_argument("--frame0", dest='frame0', action='store',default="",
+                         help='Path to existing peptides.txt from MaxQuant search in non-frameshifted proteome')
 
     args = parser.parse_args()
 
@@ -142,5 +153,6 @@ if __name__ == "__main__":
     print("- output        : "+os.path.abspath(args.output_dir))
     print("- input         : "+os.path.abspath(args.input_dir))
     print("                  " + str(nSample) + " raw file(s)")
+    print("- frame0        : "+os.path.abspath(args.frame0))
 
-    frameshift_detection(args.input_dir,args.output_dir,args.transcriptome,args.template_xml)
+    frameshift_detection(args.input_dir,args.output_dir,args.transcriptome,args.template_xml,args.frame0)

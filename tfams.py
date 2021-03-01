@@ -21,14 +21,15 @@ import argparse
 import os
 from generate_xml import *
 from Bio import SeqIO
+from frameshift import *
 
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--input", dest='input_dir', action='store',default='NA',required=True,
-                     help='Required. Path to a folder with raw data (*.raw)')
+parser.add_argument('input_dir',help='Required. Path to a folder with raw data (*.raw)')
 
-parser.add_argument("--output", dest='output_dir', action='store',default='NA',
+
+parser.add_argument("--output-dir", dest='output_dir', action='store',default='NA',
                      help='Output folder name. Default: same as input')
 
 parser.add_argument("--proteome", dest='proteome', action='store',default=proteome,
@@ -37,7 +38,7 @@ parser.add_argument("--proteome", dest='proteome', action='store',default=proteo
 parser.add_argument("--transcriptome", dest='transcriptome', action='store',default=transcriptome,
                      help='Path to transcriptome (CDS only) fasta file')
 
-parser.add_argument("--xml", dest='template_xml', action='store',default=template_xml,
+parser.add_argument("--template-xml", dest='template_xml', action='store',default=template_xml,
                      help='A template xml file')
     
 args = parser.parse_args()
@@ -96,3 +97,6 @@ print("Detection and filtering")
 import detect
 import quantify
 import plot
+
+# frameshift
+frameshift_detection(args.input_dir,args.output_dir+'/frameshift',args.transcriptome,args.template_xml,args.output_dir+'/combined/txt/peptides.txt')
