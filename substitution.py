@@ -18,15 +18,12 @@ MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 # Option: setup default files
 proteome='./reference/human.protein.fa'
 transcriptome='./reference/human.CDS.fa'
-substitution_xml='./template_xml/mqpar-substitution.xml'
-frameshift_xml='./template_xml/mqpar-frameshift.xml'
+template_xml='./template_xml/mqpar-dependent.xml'
 
 import argparse
 import os
 from generate_xml import *
 from Bio import SeqIO
-from frameshift import *
-
 
 parser = argparse.ArgumentParser()
 
@@ -42,12 +39,9 @@ parser.add_argument("--proteome", dest='proteome', action='store',default=proteo
 parser.add_argument("--transcriptome", dest='transcriptome', action='store',default=transcriptome,
                      help='Path to transcriptome (CDS only) fasta file')
 
-parser.add_argument("--substitution-xml", dest='substitution_xml', action='store',default=substitution_xml,
+parser.add_argument("--template-xml", dest='template_xml', action='store',default=template_xml,
                      help='A template xml file for substitution detection (provided in ./reference)')
 
-parser.add_argument("--frameshift-xml", dest='frameshift_xml', action='store',default=frameshift_xml,
-                     help='A template xml file for frameshift detection (provided in ./reference)')
-    
 args = parser.parse_args()
 
 
@@ -80,8 +74,7 @@ os.system('cat params.core >> params.py')
 print("Path to files:")
 print("- proteome          : "+args.proteome)
 print("- transcriptome     : "+args.transcriptome)
-print("- substitution xml  : "+args.substitution_xml)
-print("- frameshift xml    : "+args.frameshift_xml)
+print("- template xml  : "+args.template_xml)
 print("- output            : "+args.output_dir)
 print("- input             : "+args.input_dir)
 print("                      " + str(nSample) + " raw file(s)")
@@ -96,7 +89,7 @@ if os.path.isfile(args.output_dir+'/combined/txt/allPeptides.txt'):
     print("- to run MaxQuant again, please change output directory")
 else:
     print("Generate MaxQuant parameter file (xml)")
-    generate_xml(args.substitution_xml,args.input_dir,args.output_dir,args.proteome)
+    generate_xml(args.template_xml,args.input_dir,args.output_dir,args.proteome)
     print("MaxQuant search of dependent peptides")
     cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
     print('- '+cmd)
@@ -105,8 +98,3 @@ print("Detection and filtering")
 import detect
 import quantify
 import plot
-
-# frameshift
-if not os.path.isdir(args.output_dir+'/frameshift'):
-    os.mkdir(args.output_dir+'/frameshift')
-frameshift_detection(args.input_dir,args.output_dir+'/frameshift',args.transcriptome,args.frameshift_xml)
