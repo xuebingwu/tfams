@@ -78,7 +78,7 @@ optional arguments:
 ``` 
 ### Noncanonical translation 
 
-Analyze human data with default settings: 
+Detect peptides from all translation errors other than substitutions (i.e. frameshfit, utr, lncrna, intron): 
 
 ```
 python noncanonical_translation.py raw_file_folder
@@ -87,8 +87,8 @@ python noncanonical_translation.py raw_file_folder
 Detailed usage:
 
 ```
-usage: noncanonical_translation.py [-h] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME]
-                                   [--template-xml TEMPLATE_XML] [--noncoding-type NONCODING_TYPE]
+usage: noncanonical_translation.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME]
+                                   [--template-xml TEMPLATE_XML]
                                    input_dir
 
 positional arguments:
@@ -96,6 +96,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --analysis ANALYSIS   combination of frameshift, utr, lncrna, or intron separated by comma (no space). Default: frameshift,utr,lncrna,intron
   --output-dir OUTPUT_DIR
                         Output folder name. Default: same as input
   --transcriptome TRANSCRIPTOME
@@ -103,6 +104,4 @@ optional arguments:
   --proteome PROTEOME   Path to proteome fasta file
   --template-xml TEMPLATE_XML
                         A template xml file
-  --noncoding-type NONCODING_TYPE
-                        frameshift, UTR, lncRNA, or intron. Default is frameshift
 ``` 
