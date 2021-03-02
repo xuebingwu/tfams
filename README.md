@@ -30,7 +30,7 @@ Proteome: The amino acid sequences for all proteins in fasta format. Used by Max
 
 Transcriptome: For substution or frameshift detection the transcriptome is the coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/. For others see details below.
 
-To setup the default paths to the proteome and transcriptome, edit the following line at the beginning of the script `substitution.py`:
+To setup the default paths to the proteome and transcriptome files, edit the following lines at the beginning of the script `substitution.py`:
 
 ```python
 transcriptome='./reference/human.CDS.fa'
@@ -41,9 +41,9 @@ and `noncanonical_translation.py`:
 
 ```python
 transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift, same as substitution
-transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE lncRNA sequence
-transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE protein-coding sequence
-transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC, gencode.v32, +9nt flanking sequence
+transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
+transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE, protein-coding transcript sequence
+transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
 proteome='./reference/human.protein.fa'
 ```
 

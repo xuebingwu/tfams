@@ -10,9 +10,9 @@ MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 
 # Option: setup default files
 transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift, same as substitution
-transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE lncRNA sequence
-transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE protein-coding sequence
-transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC, gencode.v32, +9nt flanking sequence
+transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
+transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE, protein-coding transcript sequence
+transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
 proteome='./reference/human.protein.fa'
 template_xml='./template_xml/mqpar-standard.xml'
 
