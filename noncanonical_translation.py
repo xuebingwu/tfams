@@ -51,20 +51,14 @@ def UTR_proteome(transcriptome):
         # 5' UTR
         if s > 9: # at least 9nt 5' UTR
             utr5seq = record.seq[:(s+9)]
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr5seq[0:])+'\n')
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr5seq[1:])+'\n')
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr5seq[2:])+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr5seq[0:].translate())+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr5seq[1:].translate())+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr5seq[2:].translate())+'\n')
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-0|',str(utr5seq[0:].translate()),7))
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-1|',str(utr5seq[1:].translate()),7))
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-2|',str(utr5seq[2:].translate()),7))
         if txpt_len - e >= 9: # 3' UTR at least 9 nt
             utr3seq = record.seq[(e-18):]
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr3seq[0:])+'\n')
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr3seq[1:])+'\n')
-            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr3seq[2:])+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-0\n'+str(utr3seq[0:].translate())+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-1\n'+str(utr3seq[1:].translate())+'\n')
-            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-2\n'+str(utr3seq[2:].translate())+'\n')
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-0|',str(utr3seq[0:].translate()),7))
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-1|',str(utr3seq[1:].translate()),7))
+            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-2|',str(utr3seq[2:].translate()),7))
     out.close()
     return 0
     
@@ -87,19 +81,47 @@ def lncRNA_or_intron_proteome(transcriptome,noncoding_type):
         if '-' in record.seq or 'N' in record.seq:
             continue
         record.description = record.description.replace(' ','|')
-        out.write('>'+record.description+noncoding_type+'-frame-0\n'+str(record.seq[0:].translate())+'\n')
-        out.write('>'+record.description+noncoding_type+'-frame-1\n'+str(record.seq[1:].translate())+'\n')
-        out.write('>'+record.description+noncoding_type+'-frame-2\n'+str(record.seq[2:].translate())+'\n')
+        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-0|',str(record.seq[0:].translate()),7))
+        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-1|',str(record.seq[1:].translate()),7))
+        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-2|',str(record.seq[2:].translate()),7))      
     out.close()
     return 0
 
+def parse_fragments(header,translation,min_pep_len):
+    '''
+    generate fasta output for a translated peptides containing stop codons: 
+    header: fasta header to be used
+    translation: amino acid sequence containing stop codons, e.g. NNNN*NNNNN*NNNN*NN
+    min_pep_len: 7, shortest peptides to consider
+    
+    example output:
+    
+    >header1
+    NNNN
+    >header2
+    NNNNN
+    >header3
+    NNNN
+    
+    If stop codon (*) is not removed, it will match any amino acids
+    
+    '''
+    translations = translation.split('*')
+    n = 0
+    fasta_block = ''
+    for translation in translations:
+        if len(translation) >= min_pep_len:
+            n = n + 1
+            fasta_block = fasta_block + header +str(n) + '\n' + translation + '\n'
+    return fasta_block
+    
 def frameshift_proteome(transcriptome):
     '''
     generate protein sequences in three reading frames
     - input  : a fasta file containing CDS of all transcripts, each starts with start codon and ends with stop codon
-    - output : three fasta files for proteins encoded in each reading frame. 
+    - output : a fasta file for peptides encoded in shifted reading frame. 
                - output in the same folder as input
-               - output file suffix: -proteome-frame[0/1/2].fa
+               - output file suffix: -frameshift-proteome.fa
     '''
     # note that this doesn't include 3' UTR
     if not os.path.isfile(transcriptome):
@@ -111,8 +133,8 @@ def frameshift_proteome(transcriptome):
             continue
         if len(record.seq)%3 == 0 and record.seq[:3] in {'ATG','GTG','TTG','ATT','CTG'} and record.seq[-3:].translate()=='*':
             description = record.description.split(' ')
-            out.write('>'+description[0]+'|'+description[6]+'|frameshift+1\n'+str(record.seq[1:].translate())+'\n')
-            out.write('>'+description[0]+'|'+description[6]+'|frameshift+2\n'+str(record.seq[2:].translate())+'\n')
+            out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+1|',str(record.seq[1:].translate()),7))
+            out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+2|',str(record.seq[2:].translate()),7))
     out.close()
     return 0
         
