@@ -1,19 +1,19 @@
 # TFAMS
 ## Translation Fidelity Analysis with Mass Spectrometry Data
 
-TFAMS is a pipeline for analyzing translation fidelity with mass spectrometry data, focusing on the detection and quantificaiton of amino acid substitutions and frameshift peptides. The amino acid substitution part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/).
+TFAMS is a pipeline for detecting translation errors from mass spectrometry data. Types of errors include: 1) amino acid substitutions likely caused by tRNA mispairing, 2) frameshifting, 3) translation in noncoding sequences, including 5' UTRs, 3' UTRs, introns, and long noncoding RNAs (lncRNAs). The amino acid substitution part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/).
 
 ## Requirement / setup
 
-### Python packages
+The pipeline is written in Python 3 and has only been tested in Linux (Ubuntu 20.04.2 LTS).
 
-The pipeline is written in Python 3 and requires the following packages:
+### Python packages
 
 ```numpy, scipy, pandas, biopython, matplotlib (for plotting)```
 
 ### MaxQuant
 
-The pipeline uses MaxQuant to search for potential amino acid substitutions. To allow MaxQuant to run in Linux commandline, follow the instructions here to download ```MaxQuant``` and install ```.NET CORE```: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
+The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to run in Linux commandline, follow the instructions here to download ```MaxQuant``` and install ```.NET CORE```: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
 
 Once installed, please update the path to ```MaxQuantCmd.exe``` in the beginning of the script ```substitution.py``` and ```noncanonical_translation.py```:
 
@@ -28,7 +28,7 @@ Template xml files are provided in the folder ```./template_xml```. Typically no
 
 Proteome: The amino acid sequences for all proteins in fasta format. Used by MaxQuant and can be downloaded from UniProt: https://www.uniprot.org/proteomes/ or GENCODE: https://www.gencodegenes.org/
 
-Transcriptome: The coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/
+Transcriptome: For substution or frameshift detection the transcriptome is the coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/. For others see details below.
 
 To setup the default paths to the proteome and transcriptome, edit the following line at the beginning of the script ```substitution.py```:
 
