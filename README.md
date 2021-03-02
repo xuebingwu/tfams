@@ -9,20 +9,20 @@ The pipeline is written in Python 3 and has only been tested in Linux (Ubuntu 20
 
 ### Python packages
 
-```numpy, scipy, pandas, biopython, matplotlib (for plotting)```
+`numpy, scipy, pandas, biopython, matplotlib (for plotting)`
 
 ### MaxQuant
 
-The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to run in Linux commandline, follow the instructions here to download ```MaxQuant``` and install ```.NET CORE```: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
+The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to run in Linux commandline, follow the instructions here to download `MaxQuant` and install `.NET CORE`: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
 
-Once installed, please update the path to ```MaxQuantCmd.exe``` in the beginning of the script ```substitution.py``` and ```noncanonical_translation.py```:
+Once installed, please update the path to `MaxQuantCmd.exe` in the beginning of the script `substitution.py` and `noncanonical_translation.py`:
 
-```
+```python
 MaxQuantCmd="dotnet MaxQuant/bin/MaxQuantCmd.exe"
 ``` 
 
 ### Template parameter file (xml) for MaxQuant
-Template xml files are provided in the folder ```./template_xml```. Typically no need to change.
+Template xml files are provided in the folder `./template_xml`. Typically no need to change.
 
 ### Reference proteome and transcriptome
 
@@ -30,16 +30,16 @@ Proteome: The amino acid sequences for all proteins in fasta format. Used by Max
 
 Transcriptome: For substution or frameshift detection the transcriptome is the coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/. For others see details below.
 
-To setup the default paths to the proteome and transcriptome, edit the following line at the beginning of the script ```substitution.py```:
+To setup the default paths to the proteome and transcriptome, edit the following line at the beginning of the script `substitution.py`:
 
-```
+```python
 transcriptome='./reference/human.CDS.fa'
 proteome='./reference/human.protein.fa'
 ```
 
-and ```noncanonical_translation.py```:
+and `noncanonical_translation.py`:
 
-```
+```python
 transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift, same as substitution
 transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE lncRNA sequence
 transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE protein-coding sequence
@@ -53,13 +53,13 @@ proteome='./reference/human.protein.fa'
 
 Analyze human data with default settings: 
 
-```
+```sh
 python substitution.py raw_file_folder
 ``` 
 
 Detailed usage:
 
-```
+```sh
 usage: substitution.py [-h] [--output-dir OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--template-xml TEMPLATE_XML]
                        input_dir
 
@@ -80,13 +80,13 @@ optional arguments:
 
 Detect peptides from all translation errors other than substitutions (i.e. frameshfit, utr, lncrna, intron): 
 
-```
+```sh
 python noncanonical_translation.py raw_file_folder
-``` 
+```
 
 Detailed usage:
 
-```
+```sh
 usage: noncanonical_translation.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME]
                                    [--template-xml TEMPLATE_XML]
                                    input_dir
