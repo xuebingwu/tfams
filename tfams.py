@@ -5,7 +5,10 @@ Core algorithm/scripts from https://github.com/ernestmordret/substitutions/ by E
 
 Xuebing Wu
 
-TODO: add frameshifting error detection?
+TODO: 
+1. cancer cells have 6x higher error rate? https://pubmed.ncbi.nlm.nih.gov/11069924/: HeLa vs RRL (check HEK)
+2. RPS15 mutation in leukemia increase error: https://www.ebi.ac.uk/pride/archive/projects/PXD010924 (TMT)
+2. drug Paromomycin: didn't find data in human
 
 '''
 
@@ -15,7 +18,8 @@ MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 # Option: setup default files
 proteome='./reference/human.protein.fa'
 transcriptome='./reference/human.CDS.fa'
-template_xml='./template_xml/mqpar-substitution.xml'
+substitution_xml='./template_xml/mqpar-substitution.xml'
+frameshift_xml='./template_xml/mqpar-frameshift.xml'
 
 import argparse
 import os
@@ -38,8 +42,11 @@ parser.add_argument("--proteome", dest='proteome', action='store',default=proteo
 parser.add_argument("--transcriptome", dest='transcriptome', action='store',default=transcriptome,
                      help='Path to transcriptome (CDS only) fasta file')
 
-parser.add_argument("--template-xml", dest='template_xml', action='store',default=template_xml,
-                     help='A template xml file')
+parser.add_argument("--substitution-xml", dest='substitution_xml', action='store',default=substitution_xml,
+                     help='A template xml file for substitution detection (provided in ./reference)')
+
+parser.add_argument("--frameshift-xml", dest='frameshift_xml', action='store',default=frameshift_xml,
+                     help='A template xml file for frameshift detection (provided in ./reference)')
     
 args = parser.parse_args()
 
@@ -71,12 +78,13 @@ f.close()
 os.system('cat params.core >> params.py')
 
 print("Path to files:")
-print("- proteome      : "+args.proteome)
-print("- transcriptome : "+args.transcriptome)
-print("- template xml  : "+args.template_xml)
-print("- output        : "+args.output_dir)
-print("- input         : "+args.input_dir)
-print("                  " + str(nSample) + " raw file(s)")
+print("- proteome          : "+args.proteome)
+print("- transcriptome     : "+args.transcriptome)
+print("- substitution xml  : "+args.substitution_xml)
+print("- frameshift xml    : "+args.frameshift_xml)
+print("- output            : "+args.output_dir)
+print("- input             : "+args.input_dir)
+print("                      " + str(nSample) + " raw file(s)")
 
 
 if not os.path.isdir(args.output_dir):
@@ -88,7 +96,7 @@ if os.path.isfile(args.output_dir+'/combined/txt/allPeptides.txt'):
     print("- to run MaxQuant again, please change output directory")
 else:
     print("Generate MaxQuant parameter file (xml)")
-    generate_xml(args.template_xml,args.input_dir,args.output_dir,args.proteome)
+    generate_xml(args.substitution_xml,args.input_dir,args.output_dir,args.proteome)
     print("MaxQuant search of dependent peptides")
     cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
     print('- '+cmd)
@@ -101,4 +109,4 @@ import plot
 # frameshift
 if not os.path.isdir(args.output_dir+'/frameshift'):
     os.mkdir(args.output_dir+'/frameshift')
-frameshift_detection(args.input_dir,args.output_dir+'/frameshift',args.transcriptome,args.template_xml,args.output_dir+'/combined/txt/peptides.txt')
+frameshift_detection(args.input_dir,args.output_dir+'/frameshift',args.transcriptome,args.frameshift_xml)

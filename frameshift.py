@@ -10,6 +10,7 @@ MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 
 # Option: setup default files
 transcriptome='./reference/human.CDS.fa'
+proteome='./reference/human.protein.fa'
 template_xml='./template_xml/mqpar-frameshift.xml'
 
 import argparse
@@ -19,15 +20,65 @@ from Bio import SeqIO
 import time
 import pandas as pd
 
+def UTR_proteome(transcriptome):
+    '''
+    input: gencode coding gene sequence with UTRs
+    '''
+    if not os.path.isfile(transcriptome):
+        return -1 # file not found
+    out = open(transcriptome+'-UTR-proteome.fa','w')
+    for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
+        record.seq = record.seq.upper()    
+        header=record.description.split('|') #  >ENST00000641515.2|ENSG00000186092.6|OTTHUMG00000001094.4|OTTHUMT00000003223.4|OR4F5-202|OR4F5|2618|UTR5:1-60|CDS:61-1041|UTR3:1042-2618|
+        txpt_id = header[0]
+        gene_symbol = header[5]
+        txpt_len = int(header[6])
+        if header[7][:3] == 'CDS':
+            s,e = header[7][4:].split('-')
+        elif header[8][:3] == 'CDS':
+            s,e = header[8][4:].split('-')
+        elif header[9][:3] == 'CDS':
+            s,e = header[9][4:].split('-')
+        else:
+            pass
+        s=int(s)
+        e=int(e)
+        # 5' UTR
+        if s > 6:
+            utr5seq = record.seq[:(s+18)]
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr5seq[0:])+'\n')
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr5seq[1:])+'\n')
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr5seq[2:])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr5seq[0:].translate()[:-1])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr5seq[1:].translate()[:-1])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr5seq[2:].translate()[:-1])+'\n')
+        if txpt_len - e > 6: # 3' UTR
+            utr3seq = record.seq[(e-18):]
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-0\n'+str(utr3seq[0:])+'\n')
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-1\n'+str(utr3seq[1:])+'\n')
+            #out.write('>'+txpt_id+'|'+gene_symbol+'|UTR5-2\n'+str(utr3seq[2:])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-0\n'+str(utr3seq[0:].translate()[:-1])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-1\n'+str(utr3seq[1:].translate()[:-1])+'\n')
+            out.write('>'+txpt_id+'|'+gene_symbol+'|UTR3-2\n'+str(utr3seq[2:].translate()[:-1])+'\n')
+    out.close()
+    return 0
+    
 
-def transcriptome2proteome(transcriptome):
+def transcriptome2proteome(transcriptome): # TODO: combine the two frame in a single reference
+    '''
+    generate protein sequences in three reading frames
+    - input  : a fasta file containing CDS of all transcripts, each starts with start codon and ends with stop codon
+    - output : three fasta files for proteins encoded in each reading frame. 
+               - output in the same folder as input
+               - output file suffix: -proteome-frame[0/1/2].fa
+    '''
     # note that this doesn't include 3' UTR
     if not os.path.isfile(transcriptome):
         return -1 # file not found
     out0 = open(transcriptome+'-proteome-frame0.fa','w')
     out1 = open(transcriptome+'-proteome-frame1.fa','w')
     out2 = open(transcriptome+'-proteome-frame2.fa','w')
-    for record in SeqIO.parse(open(transcriptome,'rU'),'fasta'):
+    for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
         record.seq = record.seq.upper()    
         if len(record.seq)%3 == 0 and record.seq[:3] in {'ATG','GTG','TTG','ATT','CTG'} and record.seq[-3:].translate()=='*':
             name=record.description.split(' ')[0]
@@ -46,19 +97,12 @@ def transcriptome2proteome(transcriptome):
     out2.close()
     return 0
 
-def frameshift_detection(input_dir,output_dir,transcriptome,template_xml,frame0_peptides):
+def frameshift_detection(input_dir,output_dir,transcriptome,template_xml):
     if not ( os.path.isfile(transcriptome+'-proteome-frame0.fa') and os.path.isfile(transcriptome+'-proteome-frame1.fa') and os.path.isfile(transcriptome+'-proteome-frame2.fa')):
         print('Creating proteome from transcriptome: '+transcriptome)
         transcriptome2proteome(transcriptome)
-    
-    # skp frame0 run if path to peptides.txt is provided
-    if os.path.isfile(frame0_peptides):
-        n = 2
-    else:
-        n = 3
         
-    for i in range(n):
-        i=2-i # run frame 2, then frame 1, then frame 0 (slowest)
+    for i in [1,2]:
         if not os.path.isfile(output_dir+'/frame'+str(i)+'/combined/proc/Finish_writing_tables 11.finished.txt'):
             print("MaxQuant search in frame "+str(i))
             print("---------------------------------")
@@ -71,41 +115,70 @@ def frameshift_detection(input_dir,output_dir,transcriptome,template_xml,frame0_
             os.system('wc -l '+output_dir+'/frame'+str(i)+'/combined/txt/peptides.txt')
         else:
             print("MaxQuant analysis has been completed for frame "+str(i))
+    
 
-    # load frame0 peptides
-    if os.path.isfile(frame0_peptides):
-        pep0 = pd.read_csv(frame0_peptides,sep = '\t',index_col='Sequence')
-    else:
-        pep0 = pd.read_csv(output_dir+'/frame0/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
-        
     pep1 = pd.read_csv(output_dir+'/frame1/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
-    pep2 = pd.read_csv(output_dir+'/frame2/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
-
-    print('peptides identified in frame 0: '+str(len(pep0)))
-    print('median intensity / 1e6: '+str(pep0['Intensity'].median()/1e6))
-
     print('peptides identified in frame 1: '+str(len(pep1)))
 
-    allpep=' '.join(pep0.index)
+    pep2 = pd.read_csv(output_dir+'/frame2/combined/txt/peptides.txt',sep = '\t',index_col='Sequence')
+    print('peptides identified in frame 2: '+str(len(pep2)))
+
+    print('load the proteome (frame 0)')
+    allpep = open(transcriptome+'-proteome-frame0.fa').read()
 
     for seq in pep1.index:
         if seq in allpep:
             pep1=pep1.drop(seq)
-    print('frameshift peptides in frame 1: '+str(len(pep1)))
+    print('true frameshift peptides in frame 1 but not frame 0: '+str(len(pep1)))
     print('median intensity / 1e6: '+str(pep1['Intensity'].median()/1e6))
 
-    print('peptides identified in frame 2: '+str(len(pep2)))
 
     for seq in pep2.index:
         if seq in allpep:
             pep2=pep2.drop(seq)
 
-    print('frameshift peptides in frame 2: '+str(len(pep2)))
+    print('true frameshift peptides in frame 2 but not frame 0: '+str(len(pep2)))
     print('median intensity / 1e6: '+str(pep2['Intensity'].median()/1e6))
 
     pep1.to_csv(output_dir+'/frame1/frameshift-peptides.txt')
     pep2.to_csv(output_dir+'/frame2/frameshift-peptides.txt')
                                                                                 
+def UTR_translation_detection(input_dir,output_dir,transcriptome,proteome,template_xml):
+    if not os.path.isfile(transcriptome+'-UTR-proteome.fa'):
+        print('Creating UTR proteome from transcriptome: '+transcriptome)
+        UTR_proteome(transcriptome)
+    else:
+        print('Using existing UTR proteome: '+transcriptome+'-UTR-proteome.fa')
+        
+    if not os.path.isfile(output_dir+'/combined/txt/peptides.txt'):
+        print("MaxQuant search for UTR peptides")
+        print("---------------------------------")
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
+        generate_xml(template_xml,input_dir,output_dir,transcriptome+'-UTR-proteome.fa')
+        cmd = MaxQuantCmd+ " " + output_dir + "/mqpar.xml "
+        print(cmd)
+        os.system(cmd)
+        os.system('wc -l '+output_dir+'/combined/txt/peptides.txt')
+    else:
+        print("Found existing MaxQuant search result in UTRs: "+output_dir+'/combined/txt/peptides.txt')
+    
+    print("Removing candidate UTR peptides also found in the normal proteome")
+    npep = filter_with_proteome(output_dir+'/combined/txt/peptides.txt',proteome)
+    print(str(npep)+' UTR peptides saved to '+output_dir+'/combined/txt/peptides.txt-filtered.txt')
+                  
+def filter_with_proteome(path_to_pep,path_to_proteome):
+    '''
+    path_to_pep: path to peptides.txt
+    path_to_proteome: path to reference proteome file
+    '''
+    pep = pd.read_csv(path_to_pep,sep = '\t',index_col='Sequence')
+    allpep = open(path_to_proteome).read()
+    for seq in pep.index:
+        if seq in allpep:
+            pep=pep.drop(seq)
+    pep.to_csv(path_to_pep+'-filtered.txt')
+    return len(pep)
     
 if __name__ == "__main__":
     
@@ -118,13 +191,16 @@ if __name__ == "__main__":
 
     parser.add_argument("--transcriptome", action='store',default=transcriptome,
                          help='Path to transcriptome (CDS only) fasta file')
+              
+    parser.add_argument("--proteome", action='store',default=proteome,
+                         help='Path to proteome fasta file')
 
     parser.add_argument("--template-xml", dest='template_xml', action='store',default=template_xml,
                          help='A template xml file')
 
-    parser.add_argument("--frame0", dest='frame0', action='store',default="",
-                         help='Path to existing peptides.txt from MaxQuant search in non-frameshifted proteome')
-
+    parser.add_argument("--utr", action="store_true", 
+                    help="run UTR peptide analysis instead of frameshift")
+              
     args = parser.parse_args()
 
 
@@ -143,16 +219,23 @@ if __name__ == "__main__":
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
 
-    args.output_dir = args.output_dir +'/frameshift'
+    if args.utr:
+        args.output_dir = args.output_dir +'/utr'
+    else:
+        args.output_dir = args.output_dir +'/frameshift'
+              
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
 
     print("Path to files:")
     print("- transcriptome : "+os.path.abspath(args.transcriptome))
+    print("- proteome : "+os.path.abspath(args.proteome))
     print("- template xml  : "+os.path.abspath(args.template_xml))
     print("- output        : "+os.path.abspath(args.output_dir))
     print("- input         : "+os.path.abspath(args.input_dir))
     print("                  " + str(nSample) + " raw file(s)")
-    print("- frame0        : "+os.path.abspath(args.frame0))
 
-    frameshift_detection(args.input_dir,args.output_dir,args.transcriptome,args.template_xml,args.frame0)
+    if args.utr:
+        UTR_translation_detection(args.input_dir,args.output_dir,args.transcriptome,args.proteome,args.template_xml)
+    else:
+        frameshift_detection(args.input_dir,args.output_dir,args.transcriptome,args.template_xml)
