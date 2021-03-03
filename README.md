@@ -15,14 +15,22 @@ The pipeline is written in Python 3 and has only been tested in Linux (Ubuntu 20
 
 The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to run in Linux commandline, follow the instructions here to download `MaxQuant` and install `.NET CORE`: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
 
-Once installed, please update the path to `MaxQuantCmd.exe` in the beginning of the script `substitution.py` and `noncanonical_translation.py`:
+Once installed, please update the path to `MaxQuantCmd.exe` in the beginning of the script `tfams.py`:
 
 ```python
-MaxQuantCmd="dotnet MaxQuant/bin/MaxQuantCmd.exe"
+MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 ``` 
 
 ### Template parameter file (xml) for MaxQuant
-Template xml files are provided in the folder `./template_xml`. Typically no need to change.
+Template xml files with MaxQuant parameters are provided in the folder `./template_xml`. Typically there is no need to change these files. The path to the default xml files can be edited in the script `tfams.py`:
+
+```python
+# default of --standard-xml
+template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
+
+# default of --substitution-xml
+template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant parameters with dependent peptide search and match between runs
+```
 
 ### Reference proteome and transcriptome
 
@@ -30,21 +38,20 @@ Proteome: The amino acid sequences for all proteins in fasta format. Used by Max
 
 Transcriptome: For substution or frameshift detection the transcriptome is the coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/. For others see details below.
 
-To setup the default paths to the proteome and transcriptome files, edit the following lines at the beginning of the script `substitution.py`:
+To setup the default paths to the proteome and transcriptome files, edit the following lines at the beginning of the script `tfams.py`:
 
 ```python
-transcriptome='./reference/human.CDS.fa'
-proteome='./reference/human.protein.fa'
-```
+# default of --proteome
+proteome='./reference/human.protein.fa'                # amino acid sequences of all proteins
 
-and `noncanonical_translation.py`:
+# default of --transcriptome
+transcriptome='./reference/human.CDS.fa'               # for substitution, only CDS of mRNAs
 
-```python
-transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift, same as substitution
+# default for other transcriptomes used to generate noncanonical peptide databases 
+transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift analysis, same as substitution
 transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
 transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE, protein-coding transcript sequence
 transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
-proteome='./reference/human.protein.fa'
 ```
 
 ## Example usage
@@ -69,7 +76,7 @@ python tfams.py raw_file_folder --analysis substitution
 
 ## Detailed usage:
 
-```sh
+```
 usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME] 
                 [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
                 [--standard-xml TEMPLATE_XML_STANDARD]

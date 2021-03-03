@@ -8,15 +8,25 @@ Xuebing Wu
 # Required: please update the path to MaxQuant binary
 MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 
-# Option: setup default files
-transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift, same as substitution
+### Optional but required if want to use default settings
+
+# default of --standard-xml
+template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
+
+# default of --substitution-xml
+template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant parameters with dependent peptide search and match between runs
+
+# default of --proteome
+proteome='./reference/human.protein.fa'                # amino acid sequences of all proteins
+
+# default of --transcriptome
+transcriptome='./reference/human.CDS.fa'               # for substitution, only CDS of mRNAs
+
+# default for other transcriptomes used to generate noncanonical peptide databases 
+transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift analysis, same as substitution
 transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
 transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE, protein-coding transcript sequence
 transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
-transcriptome='./reference/human.CDS.fa'
-proteome='./reference/human.protein.fa'
-template_xml_standard='./template_xml/mqpar-standard.xml'
-template_xml_substitution='./template_xml/mqpar-substitution.xml'
 
 import argparse
 import os
