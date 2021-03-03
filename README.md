@@ -47,68 +47,47 @@ transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, do
 proteome='./reference/human.protein.fa'
 ```
 
-## Usage
+## Example usage
 
-### substitution detection
-
-Analyze human data with default settings: 
+Detect canonical peptides with default settings (path to transcriptome/proteome files listed above):
 
 ```sh
-python substitution.py raw_file_folder
-``` 
+python tfams.py raw_file_folder
+```
 
-Detailed usage:
+Detect both canonical and all noncanonical peptides (except substitutions):
 
 ```sh
-usage: substitution.py [-h] [--output-dir OUTPUT_DIR] [--proteome PROTEOME] [--transcriptome TRANSCRIPTOME] [--template-xml TEMPLATE_XML]
-                       input_dir
+python tfams.py raw_file_folder --analysis frameshift,utr,lncrna,intron
+```
+
+Detect both canonical and all noncanical peptides (except substitutions):
+
+```sh
+python tfams.py raw_file_folder --analysis substitution
+```
+
+## Detailed usage:
+
+```sh
+usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME] 
+                [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
+                [--standard-xml TEMPLATE_XML_STANDARD]
+                input_dir
 
 positional arguments:
   input_dir             Required. Path to a folder with raw data (*.raw)
 
 optional arguments:
   -h, --help            show this help message and exit
-  --output-dir OUTPUT_DIR
-                        Output folder name. Default: same as input
-  --proteome PROTEOME   Path to proteome fasta file
-  --transcriptome TRANSCRIPTOME
-                        Path to transcriptome (CDS only) fasta file
-  --template-xml TEMPLATE_XML
-                        A template xml file for substitution detection (provided in ./reference)
-``` 
-### Noncanonical translation 
-
-Detect canonical peptides:
-
-```sh
-python noncanonical_translation.py raw_file_folder
-```
-
-Detect both canonical and all noncanical peptides:
-
-```sh
-python noncanonical_translation.py raw_file_folder --analysis frameshift,utr,lncrna,intron
-```
-
-Detailed usage:
-
-```sh
-python noncanonical_translation.py -h
-usage: noncanonical_translation.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME]
-                                   [--proteome PROTEOME] [--template-xml TEMPLATE_XML]
-                                   input_dir
-
-positional arguments:
-  input_dir             Required. Path to a folder with raw data (*.raw)
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --analysis ANALYSIS   combination of frameshift, utr, lncrna, or intron separated by comma (no space)
+  --analysis ANALYSIS   combination of frameshift, utr, lncrna, intron, and substitution separated by comma (no space)
   --output-dir OUTPUT_DIR
                         Output folder name. Default: same as input
   --transcriptome TRANSCRIPTOME
                         Path to transcriptome fasta file. See README for details
   --proteome PROTEOME   Path to proteome fasta file
-  --template-xml TEMPLATE_XML
-                        A template xml file
+  --substitution-xml TEMPLATE_XML_SUBSTITUTION
+                        A template xml file for substitution detection
+  --standard-xml TEMPLATE_XML_STANDARD
+                        A template xml file for standard MaxQuant search
 ``` 

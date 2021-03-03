@@ -336,8 +336,8 @@ if __name__ == "__main__":
             print("MaxQuant search of dependent peptides")
             cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
             print('- '+cmd)
-            #os.system(cmd)
+            os.system(cmd)
         print("Detection and filtering")
-        #import detect
-        #import quantify
-        #import plot
+        import detect
+        import quantify
+        import plot
