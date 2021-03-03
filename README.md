@@ -68,7 +68,7 @@ Detect both canonical and all noncanonical peptides (except substitutions):
 python tfams.py raw_file_folder --analysis frameshift,utr,lncrna,intron
 ```
 
-Detect both canonical and all noncanical peptides (except substitutions):
+Detect substitutions:
 
 ```sh
 python tfams.py raw_file_folder --analysis substitution
