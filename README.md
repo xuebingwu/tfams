@@ -87,8 +87,9 @@ python noncanonical_translation.py raw_file_folder
 Detailed usage:
 
 ```sh
-usage: noncanonical_translation.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME]
-                                   [--template-xml TEMPLATE_XML]
+python noncanonical_translation.py -h
+usage: noncanonical_translation.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME]
+                                   [--proteome PROTEOME] [--template-xml TEMPLATE_XML]
                                    input_dir
 
 positional arguments:
@@ -96,11 +97,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --analysis ANALYSIS   combination of frameshift, utr, lncrna, or intron separated by comma (no space). Default: frameshift,utr,lncrna,intron
+  --analysis ANALYSIS   combination of frameshift, utr, lncrna, or intron separated by comma (no space)
   --output-dir OUTPUT_DIR
                         Output folder name. Default: same as input
   --transcriptome TRANSCRIPTOME
-                        Path to transcriptome fasta file
+                        Path to transcriptome fasta file. See README for details
   --proteome PROTEOME   Path to proteome fasta file
   --template-xml TEMPLATE_XML
                         A template xml file
