@@ -1,5 +1,5 @@
-input_dir = '/media/rna/xuebing/PXD020224/Ctrl'
-output_dir = '/media/rna/xuebing/PXD020224/Ctrl'
+input_dir = '/home/xw2629/proteomics/PXD010154/brain'
+output_dir = '/home/xw2629/proteomics/PXD010154/brain'
 transcriptome = './reference/human.CDS.fa'
 
 """
