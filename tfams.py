@@ -1,8 +1,9 @@
 '''
-A pipeline for detecting frameshift events from proteomics data
+A pipeline for detecting translation errors from proteomics data
+
+https://github.com/xuebingwu/tfams
 
 Xuebing Wu
-
 '''
 
 # Required: please update the path to MaxQuant binary
@@ -35,9 +36,20 @@ from Bio import SeqIO
 import time
 import pandas as pd
 
-def UTR_proteome(transcriptome):
+def generate_UTR_proteome(transcriptome):
     '''
-    input: gencode coding gene sequence with UTRs
+    input: 
+        - a fasta file of mRNA sequences, including UTRs. 
+        - downloaded from GENCODE, sequenes for protein-coding transcripts
+        - header format: >ENST00000641515.2|ENSG00000186092.6|OTTHUMG00000001094.4|OTTHUMT00000003223.4|OR4F5-202|OR4F5|2618|UTR5:1-60|CDS:61-1041|UTR3:1042-2618|\
+    output:
+        - a fasta file of amino acid sequences resulted from translating 5' UTRs or 3' UTRs 
+        - output file name: *-utr-proteome.fa, in the same folder as input
+        - allow translation in all 3 reading frames
+        - allow stop codons to remain in the peptide sequences (as *)
+        - header format: >en|ENST00000641515.2_OR4F5_UTR5_0|
+        - UTR5_0 means translation of 5' UTR in frame 0, same as the coding sequence downstream
+        - UTR3_0 means translation of 3' UTR in frame 0, same as the coding sequence upstream
     '''
     if not os.path.isfile(transcriptome):
         return -1 # file not found
@@ -46,7 +58,7 @@ def UTR_proteome(transcriptome):
         record.seq = record.seq.upper()
         if '-' in record.seq or 'N' in record.seq:
             continue
-        header=record.description.split('|') #  >ENST00000641515.2|ENSG00000186092.6|OTTHUMG00000001094.4|OTTHUMT00000003223.4|OR4F5-202|OR4F5|2618|UTR5:1-60|CDS:61-1041|UTR3:1042-2618|
+        header=record.description.split('|') 
         description = '>en|'+header[0]+'_'+header[5]
         txpt_len = int(header[6])
         if header[7][:3] == 'CDS':
@@ -74,13 +86,18 @@ def UTR_proteome(transcriptome):
     out.close()
     return 0
     
-def lncRNA_or_intron_proteome(transcriptome,analysis): 
+def generate_lncRNA_or_intron_proteome(transcriptome,analysis): 
     '''
-    generate protein sequences in three reading frames in lncRNAs
-    - input  : a fasta file containing sequences of all lncRNAs
-    - output : fasta files for proteins encoded in each reading frame, regardless of AUG
-               - output in the same folder as input
-               - output file suffix: -proteome.fa
+    input
+        - a fasta file containing sequences of all lncRNAs or introns
+        - lncRNA: downloaded from GENCODE, sequences of all lncRNAs
+        - lncRNA header: >ENST00000326734.2|ENSG00000177757.2|OTTHUMG00000002471.2|OTTHUMT00000007025.2|FAM87B-201|FAM87B|1947|
+        - intron: downloaded from UCSC Table browser, with 9nt flanking sequence, by chromosome and then merged together
+    output
+        - a fasta files for proteins encoded in each reading frame, regardless of start or stop codons
+        - output in the same folder as input, file name: *-lncrna-proteome.fa or *-intron-proteome.fa
+        - header for lncRNA: >en|ENST00000326734.2_FAM87B_lncrna_0 
+        - header for itnron: >en|ENST00000326734.2_range=chr1:65565-69045_intron_0
     '''
     if not os.path.isfile(transcriptome):
         return -1 # file not found
@@ -104,17 +121,18 @@ def lncRNA_or_intron_proteome(transcriptome,analysis):
     out.close()
     return 0
     
-def frameshift_proteome(transcriptome):
+def generate_frameshift_proteome(transcriptome):
     '''
     generate protein sequences in three reading frames
-    - input  : a fasta file containing CDS of all transcripts, each starts with start codon and ends with stop codon
-    - output : a fasta file for peptides encoded in shifted reading frame. 
-               - output in the same folder as input
-               - output file suffix: -frameshift-proteome.fa
-    # uniprot header: 
-    >sp|P27361|MK03_HUMAN Mitogen-activated protein kinase 3 OS=Homo sapiens OX=9606 GN=MAPK3 PE=1 SV=4
-    # input header:
-    >ENST00000632684.1 cds chromosome:GRCh38:7:142786213:142786224:1 gene:ENSG00000282431.1 gene_biotype:TR_D_gene transcript_biotype:TR_D_gene gene_symbol:TRBD1 description:T cell receptor beta diversity 1 [Source:HGNC Symbol;Acc:HGNC:12158]
+    input: 
+        - a fasta file containing CDS of all transcripts, each starts with start codon and ends with stop codon
+        - noncanonical start codon allowed ('GTG','TTG','ATT','CTG')
+        - downloaded from emsembl http://ftp.ensembl.org/pub/release-103/fasta/
+        - header: >ENST00000632684.1 cds chromosome:GRCh38:7:142786213:142786224:1 gene:ENSG00000282431.1 gene_biotype:TR_D_gene transcript_biotype:TR_D_gene gene_symbol:TRBD1 description:T cell receptor beta diversity 1 [Source:HGNC Symbol;Acc:HGNC:12158]
+    output:
+        - a fasta file for peptides encoded in shifted reading frame (1 or 2). 
+        - output in the same folder as input, file name: *-frameshift-proteome.fa
+        - header: >en|ENST00000632684.1_TRBD1_frameshift_1
     '''
     # note that this doesn't include 3' UTR
     if not os.path.isfile(transcriptome):
@@ -142,25 +160,25 @@ def generate_custom_proteome(analysis):
     if analysis == 'lncrna':
         path_to_custom_proteome = transcriptome_lncrna+'-lncrna-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            lncRNA_or_intron_proteome(transcriptome_lncrna,'lncrna') 
+            generate_lncRNA_or_intron_proteome(transcriptome_lncrna,'lncrna') 
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     elif analysis == 'intron':
         path_to_custom_proteome = transcriptome_intron+'-intron-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            lncRNA_or_intron_proteome(transcriptome_intron,'intron') 
+            generate_lncRNA_or_intron_proteome(transcriptome_intron,'intron') 
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     elif analysis == 'utr':
         path_to_custom_proteome = transcriptome_mrna+'-utr-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            UTR_proteome(transcriptome_mrna)
+            generate_UTR_proteome(transcriptome_mrna)
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     elif analysis == 'frameshift':
         path_to_custom_proteome = transcriptome_frameshift+'-frameshift-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            frameshift_proteome(transcriptome_frameshift)
+            generate_frameshift_proteome(transcriptome_frameshift)
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     else:
@@ -187,6 +205,17 @@ def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml)
         print("MaxQuant result found in the output folder. To run again please delete existing output folder: "+output_dir)
     
 def filter_maxquant_result(output_dir,path_to_proteome):
+    '''
+    filter 1: potential contamiants
+    filter 2: peptides found in the normal/canonical proteome
+    
+    input:
+        - output_dir: a parental folder where 'combined' from a MaxQuant run can be found
+        - path_to_proteome: a fasta file with all canonical protein sequences
+    output:
+        - shown on screen how many peptides remain after each filter
+        - filtered peptides saved to output_dir+'/combined/txt/evidence.txt-filtered.txt'
+    '''
     path_to_evidence = output_dir+'/combined/txt/evidence.txt'
     try:
         pep = pd.read_csv(path_to_evidence,sep = '\t')
