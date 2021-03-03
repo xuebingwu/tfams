@@ -44,7 +44,7 @@ def UTR_proteome(transcriptome):
         elif header[9][:3] == 'CDS':
             s,e = header[9][4:].split('-')
         else:
-            pass
+            continue
         s=int(s) # CDS start
         e=int(e) # CDS end
         # 5' UTR

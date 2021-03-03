@@ -78,10 +78,16 @@ optional arguments:
 ``` 
 ### Noncanonical translation 
 
-Detect peptides from all translation errors other than substitutions (i.e. frameshfit, utr, lncrna, intron): 
+Detect canonical peptides:
 
 ```sh
 python noncanonical_translation.py raw_file_folder
+```
+
+Detect both canonical and all noncanical peptides:
+
+```sh
+python noncanonical_translation.py raw_file_folder --analysis frameshift,utr,lncrna,intron
 ```
 
 Detailed usage:
