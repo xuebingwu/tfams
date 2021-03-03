@@ -35,8 +35,7 @@ def UTR_proteome(transcriptome):
         if '-' in record.seq or 'N' in record.seq:
             continue
         header=record.description.split('|') #  >ENST00000641515.2|ENSG00000186092.6|OTTHUMG00000001094.4|OTTHUMT00000003223.4|OR4F5-202|OR4F5|2618|UTR5:1-60|CDS:61-1041|UTR3:1042-2618|
-        txpt_id = header[0]
-        gene_symbol = header[5]
+        description = '>-|'+header[0]+':'+header[5]
         txpt_len = int(header[6])
         if header[7][:3] == 'CDS':
             s,e = header[7][4:].split('-')
@@ -46,23 +45,27 @@ def UTR_proteome(transcriptome):
             s,e = header[9][4:].split('-')
         else:
             pass
-        s=int(s)
-        e=int(e)
+        s=int(s) # CDS start
+        e=int(e) # CDS end
         # 5' UTR
         if s > 9: # at least 9nt 5' UTR
             utr5seq = record.seq[:(s+9)]
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-0|',str(utr5seq[0:].translate()),7))
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-1|',str(utr5seq[1:].translate()),7))
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-2|',str(utr5seq[2:].translate()),7))
+            utr5seq = utr5seq[len(utr5seq)%3:] # make it in frame with CDS by skipping the first or the first 2 bases
+            #out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-0|',str(utr5seq[0:].translate()),7))
+            #out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-1|',str(utr5seq[1:].translate()),7))
+            #out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR5-2|',str(utr5seq[2:].translate()),7))
+            out.write(description+':UTR5-0|-|\n'+str(utr5seq[0:].translate())+'\n')
+            out.write(description+':UTR5-1|-|\n'+str(utr5seq[1:].translate())+'\n')
+            out.write(description+':UTR5-2|-|\n'+str(utr5seq[2:].translate())+'\n')
         if txpt_len - e >= 9: # 3' UTR at least 9 nt
-            utr3seq = record.seq[(e-18):]
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-0|',str(utr3seq[0:].translate()),7))
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-1|',str(utr3seq[1:].translate()),7))
-            out.write(parse_fragments('>'+txpt_id+'|'+gene_symbol+'|UTR3-2|',str(utr3seq[2:].translate()),7))
+            utr3seq = record.seq[(e-9):]
+            out.write(description+':UTR3-0|-|\n'+str(utr3seq[0:].translate())+'\n')
+            out.write(description+':UTR3-1|-|\n'+str(utr3seq[1:].translate())+'\n')
+            out.write(description+':UTR3-2|-|\n'+str(utr3seq[2:].translate())+'\n')
     out.close()
     return 0
     
-def lncRNA_or_intron_proteome(transcriptome,noncoding_type): 
+def lncRNA_or_intron_proteome(transcriptome,analysis): 
     '''
     generate protein sequences in three reading frames in lncRNAs
     - input  : a fasta file containing sequences of all lncRNAs
@@ -72,21 +75,30 @@ def lncRNA_or_intron_proteome(transcriptome,noncoding_type):
     '''
     if not os.path.isfile(transcriptome):
         return -1 # file not found
-    noncoding_type = str(noncoding_type).lower()
+    analysis = str(analysis).lower()
     
-    out = open(transcriptome+'-'+noncoding_type+'-proteome.fa','w')
+    out = open(transcriptome+'-'+analysis+'-proteome.fa','w')
 
     for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
         record.seq = record.seq.upper()
         if '-' in record.seq or 'N' in record.seq:
             continue
-        record.description = record.description.replace(' ','|')
-        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-0|',str(record.seq[0:].translate()),7))
-        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-1|',str(record.seq[1:].translate()),7))
-        out.write(parse_fragments('>'+record.description+noncoding_type+'-frame-2|',str(record.seq[2:].translate()),7))      
+        if analysis == 'lncrna': # >ENST00000326734.2|ENSG00000177757.2|OTTHUMG00000002471.2|OTTHUMT00000007025.2|FAM87B-201|FAM87B|1947|
+            descriptions = record.description.split('|')
+            description = '-|'+descriptions[0]+':'+descriptions[5]+':lncrna'
+        else:# >hg38_wgEncodeGencodeCompV36_ENST00000641515.2_1 range=chr1:65565-69045 5'pad=9 3'pad=9 strand=+ repeatMasking=none
+            descriptions = record.description.split(' ')
+            description = '-|'+descriptions[0]+':'+descriptions[1]+':intron'
+        #out.write(parse_fragments('>'+description+'|'+analysis+'|0|',str(record.seq[0:].translate()),7))
+        #out.write(parse_fragments('>'+description+'|'+analysis+'|1|',str(record.seq[1:].translate()),7))
+        #out.write(parse_fragments('>'+description+'|'+analysis+'|2|',str(record.seq[2:].translate()),7))      
+        out.write('>'+description+'-0|-|\n'+str(record.seq[0:].translate())+'\n')
+        out.write('>'+description+'-1|-|\n'+str(record.seq[1:].translate())+'\n')
+        out.write('>'+description+'-2|-|\n'+str(record.seq[2:].translate())+'\n')
     out.close()
     return 0
 
+# NOT USED!!!
 def parse_fragments(header,translation,min_pep_len):
     '''
     generate fasta output for a translated peptides containing stop codons: 
@@ -132,62 +144,71 @@ def frameshift_proteome(transcriptome):
         if '-' in record.seq or 'N' in record.seq:
             continue
         if len(record.seq)%3 == 0 and record.seq[:3] in {'ATG','GTG','TTG','ATT','CTG'} and record.seq[-3:].translate()=='*':
-            description = record.description.split(' ')
-            out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+1|',str(record.seq[1:].translate()),7))
-            out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+2|',str(record.seq[2:].translate()),7))
+            descriptions = record.description.split(' ')
+            description = '>-|'+descriptions[0]+':'+descriptions[6].split(':')[1]
+            #out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+1|',str(record.seq[1:].translate()),7))
+            #out.write(parse_fragments('>'+description[0]+'|'+description[6]+'|frameshift+2|',str(record.seq[2:].translate()),7))
+            out.write(description+':frameshift-1|-|\n'+str(record.seq[1:].translate())+'\n')
+            out.write(description+':frameshift-2|-|\n'+str(record.seq[2:].translate())+'\n')
     out.close()
     return 0
         
-def noncoding_translation_detection(input_dir,output_dir,transcriptome,proteome,template_xml,noncoding_type):
-    noncoding_type = noncoding_type.lower()
-    path_to_custome_proteome = transcriptome+'-'+noncoding_type+'-proteome.fa'
+def noncoding_translation_detection(input_dir,output_dir,transcriptome,proteome,template_xml,analysis):
+    analysis = analysis.lower()
+    path_to_custom_proteome = transcriptome+'-'+analysis+'-proteome.fa'
 
-    if not os.path.isfile(path_to_custome_proteome):
-        print('Creating custom proteome from transcriptome: '+transcriptome)
-        if noncoding_type == 'lncrna' or noncoding_type == 'intron':
-            lncRNA_or_intron_proteome(transcriptome,noncoding_type)           
-        elif noncoding_type == 'utr':
-            UTR_proteome(transcriptome)
-        elif noncoding_type == 'frameshift':
-            frameshift_proteome(transcriptome)
-        else:
-            print("ERROR: unknown noncoding_type "+noncoding_type)
-            exit()
+    # generate custom proteome for noncanonical analysis
+    if analysis == 'canonical':
+        path_to_custom_proteome = proteome
     else:
-        print('Using existing proteome: '+path_to_custome_proteome)
+        path_to_custom_proteome = transcriptome+'-'+analysis+'-proteome.fa'
+        if not os.path.isfile(path_to_custom_proteome):
+            print('Creating custom proteome from transcriptome: '+transcriptome)
+            if analysis == 'lncrna' or analysis == 'intron':
+                lncRNA_or_intron_proteome(transcriptome,analysis)           
+            elif analysis == 'utr':
+                UTR_proteome(transcriptome)
+            elif analysis == 'frameshift':
+                frameshift_proteome(transcriptome)
+            else:
+                print("ERROR: unknown analysis type: "+analysis)
+                exit()
+        else:
+            print('Using existing proteome: '+path_to_custom_proteome)
         
-    if not os.path.isfile(output_dir+'/combined/txt/peptides.txt'):
+    path_to_evidence = output_dir+'/combined/txt/evidence.txt'
+    if not os.path.isfile(path_to_evidence):
         print("MaxQuant search for peptides")
         print("---------------------------------")
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
-        generate_xml(template_xml,input_dir,output_dir,path_to_custome_proteome)
+        generate_xml(template_xml,input_dir,output_dir,path_to_custom_proteome)
         cmd = MaxQuantCmd+ " " + output_dir + "/mqpar.xml "
         print(cmd)
         os.system(cmd)
-        os.system('wc -l '+output_dir+'/combined/txt/peptides.txt')
+        #os.system('wc -l '+output_dir+'/combined/txt/evidence.txt')
     else:
-        print("Found existing MaxQuant search result: "+output_dir+'/combined/txt/peptides.txt')
+        print("Found existing MaxQuant search result: "+path_to_evidence)
     
-    print("Removing candidate peptides also found in the normal proteome")
-    npep = filter_with_proteome(output_dir+'/combined/txt/peptides.txt',proteome)
-    print(str(npep)+' peptides saved to '+output_dir+'/combined/txt/peptides.txt-filtered.txt')
-                  
-def filter_with_proteome(path_to_pep,path_to_proteome):
-    '''
-    path_to_pep: path to peptides.txt
-    path_to_proteome: path to reference proteome file
-    '''
+    # filtering peptides identified 
     try:
-        pep = pd.read_csv(path_to_pep,sep = '\t',index_col='Sequence')
-        allpep = open(path_to_proteome).read()
-        for seq in pep.index:
-            if seq in allpep:
-                pep=pep.drop(seq)
-        pep.to_csv(path_to_pep+'-filtered.txt')        
-        return len(pep)
+        pep = pd.read_csv(path_to_evidence,sep = '\t',index_col='Sequence')
+        print(str(len(pep))+" peptides identified")
+        
+        pep = pep[pep['Potential contaminant'] != '+']
+        print(str(len(pep))+" peptides remain after removing potential contaminant")
+        
+        if analysis != 'canonical':
+            allpep = open(proteome).read()
+            for seq in pep.index:
+                if seq in allpep:
+                    pep=pep.drop(seq)
+            print(str(len(pep))+" peptides remain after removing canonical peptides")
+        pep.to_csv(path_to_evidence+'-filtered.txt')  
+        print(str(len(pep))+' peptides saved to '+path_to_evidence+'-filtered.txt')
     except:
-        return 0
+        print("0 peptides were identified in the MaxQuant search")
+                  
     
 if __name__ == "__main__":
     
@@ -202,7 +223,7 @@ if __name__ == "__main__":
                          help='Output folder name. Default: same as input')
 
     parser.add_argument("--transcriptome", action='store',default='NA',
-                         help='Path to transcriptome fasta file')
+                         help='Path to transcriptome fasta file. See README for details')
               
     parser.add_argument("--proteome", action='store',default=proteome,
                          help='Path to proteome fasta file')
@@ -225,6 +246,20 @@ if __name__ == "__main__":
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
         
+    # map to canonical proteome if not already run
+    output_dir = args.output_dir +'/canonical'         
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    # show parameters
+    print("analysis         : canonical ")
+    print("- proteome       : "+args.proteome)
+    print("- template xml   : "+args.template_xml)
+    print("- output         : "+output_dir)
+    print("- input          : "+args.input_dir)
+    print("                   " + str(nSample) + " raw file(s)")
+    noncoding_translation_detection(args.input_dir,output_dir,'',args.proteome,args.template_xml,'canonical')
+        
+    # custom proteome analysis
     analyses = args.analysis.split(',')
     custom_transcriptome = ''
     for analysis in analyses:
