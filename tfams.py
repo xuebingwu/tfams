@@ -138,6 +138,7 @@ def generate_frameshift_proteome(transcriptome):
     if not os.path.isfile(transcriptome):
         return -1 # file not found
     out = open(transcriptome+'-frameshift-proteome.fa','w')
+    out0 = open(transcriptome+'-proteome.fa','w')
     for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
         record.seq = record.seq.upper()   
         if '-' in record.seq or 'N' in record.seq:
@@ -150,7 +151,12 @@ def generate_frameshift_proteome(transcriptome):
             gene_symbol = descriptions[0]+'_'+descriptions[6].split(':')[1]+'_frameshift_2'
             description = 'en|'+gene_symbol+'|'
             out.write('>'+description+'\n'+str(record.seq[2:].translate())+'\n')
+            # generate non-frameshifted proteins
+            gene_symbol = descriptions[0]+'_'+descriptions[6].split(':')[1]+'_frameshift_0'
+            description = 'en|'+gene_symbol+'|'
+            out0.write('>'+description+'\n'+str(record.seq.translate())+'\n')
     out.close()
+    out0.close()
     return 0
         
 def generate_custom_proteome(analysis):
@@ -224,19 +230,63 @@ def filter_maxquant_result(output_dir,path_to_proteome):
         print("0 peptides were identified in the MaxQuant search")
         
     pep = pep[pep['Potential contaminant'] != '+']
-    print(str(len(pep))+" peptides remain after removing potential contaminant")
+    pep = pep[pep['Reverse'] != '+']
+    print(str(len(pep))+" peptides remain after removing potential contaminant and reverse match")
         
     # remove peptides also found in canonical proteome
     # note that two sequences can be the same, so do not index using sequence
-    allpep = open(path_to_proteome).read()
+    allpep = open(path_to_proteome).read().replace("\n","")
     for i in pep.index:
         #print(pep.at[i,'Sequence'])
         if pep.at[i,'Sequence'] in allpep:
             pep=pep.drop(i)
     print(str(len(pep))+" peptides remain after removing canonical peptides")
+    pep = pep[~pep['Intensity'].isna() & pep['Intensity']>0 & ~pep.Proteins.isna()]
+    print(str(len(pep))+" peptides remain after removing peptides missing intensity values or assigned proteins")
     pep.to_csv(path_to_evidence+'-filtered.txt')  
-    print('filtered peptides saved to '+path_to_evidence+'-filtered.txt')        
+    print('filtered peptides saved to '+path_to_evidence+'-filtered.txt')
     
+    return len(pep)
+    
+def quantification_and_plot(output_dir,canonical_output_dir):
+    # count, median, mean intensity of identified peptides
+    # count, median, mean intensity of protein groups with identified peptides
+    # same for canonical output
+    # violin plot for the distribution of peptide/protein intensities
+    
+    #output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/frameshift-test/frameshift/'
+    #output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/frameshift-test/canonical/'
+
+    pep = pd.read_csv(output_dir+'/combined/txt/evidence.txt-filtered.txt')
+    
+    pep = pep[~pep['Intensity'].isna() & pep['Intensity']>0]
+    
+    print(" peptides identified: "+str(len(pep)))
+    print(" peptide intensity, median/1e6: "+str(pep['Intensity'].median()/1e6))
+    print(" peptide intensity, mean/1e6: "+str(pep['Intensity'].mean()/1e6))
+    #plt.hist(np.log10(pep['Intensity']),bins=100)
+
+    plt.violinplot([np.log10(pep['Intensity'])],showmeans=False,showmedians=True)
+    plt.ylabel('log10 (Intensity)')
+    plt.xticks([1], ['Pep'])
+    plt.show()
+    
+    # protein level
+    protein_intensity = {}
+    for i in pep.index:
+        protein = pep.loc[i]['Leading razor protein'].split('_')[1] # ENST00000564104.5_TPPP3_frameshift_2
+        if not (protein in protein_intensity):
+            protein_intensity[protein] = 0
+        protein_intensity[protein] = protein_intensity[protein] + pep.loc[i]['Intensity']
+    protein_intensity_df = pd.DataFrame.from_dict(protein_intensity, orient='index',columns=['Intensity'])
+    print(" proteins identified: "+str(len(protein_intensity_df)))
+    print(" protein intensity, median/1e6: "+str(protein_intensity_df.Intensity.median()/1e6))
+    print(" peptide intensity, mean/1e6: "+str(protein_intensity_df.Intensity.mean()/1e6))
+    
+    plt.violinplot([np.log10(protein_intensity_df.Intensity)],showmeans=False,showmedians=True)
+    plt.ylabel('log10 (Intensity)')
+    plt.xticks([1], ['Protein'])
+
 # NOT USED!!! slows the analysis by a lot
 def parse_fragments(header,translation,min_pep_len):
     '''
@@ -332,7 +382,7 @@ if __name__ == "__main__":
         maxquant_standard_search(path_to_custom_proteome,args.input_dir,output_dir,args.template_xml_standard)
         
         if analysis != 'canonical':
-            filter_maxquant_result(output_dir,args.proteome)
+            npep = filter_maxquant_result(output_dir,args.proteome)
         
     if 'substitution' in args.analysis:
         
