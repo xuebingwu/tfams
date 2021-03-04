@@ -333,7 +333,7 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
         if(len(c)==0):
             dp_i.append(np.nan)
         elif(len(c)>1):
-            dp_i.append(min(c.loc[c.index,'Intensity']))
+            dp_i.append(sum(c.loc[c.index,'Intensity']))# min or sum
         else:
             dp_i.append(c.loc[c.index[0],'Intensity'])
         a = ep[ep['Sequence']== row['DP Base Sequence']]
@@ -342,7 +342,7 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
         if(len(c)==0):
             bp_i.append(np.nan)
         elif(len(c)>1):
-            bp_i.append(max(c.loc[c.index,'Intensity']))
+            bp_i.append(sum(c.loc[c.index,'Intensity'])) # max or sum
         else:
             bp_i.append(c.loc[c.index[0],'Intensity'])
     subs['DP Intensity'] = dp_i
@@ -576,12 +576,14 @@ subs = subs.iloc[:cut_off+1]
 #%%
 subs = subs[~subs.decoy]
 
-#print("- calculate error rate")
-#calculate_error_rate(path_to_evidence,path_to_allPeptides,subs)
-#print('- median error rate: '+str(np.nanmedian(subs['Error rate'])))
-#print('- median error rate (near-cognate): '+str(np.nanmedian(subs[subs['mispairing']==1]['Error rate'])))
-
 print("- number of substitutions: "+str(len(subs)))
+
+
+print("- calculate error rate")
+calculate_error_rate(path_to_evidence,path_to_allPeptides,subs)
+print('- median error rate: '+str(np.nanmedian(subs['Error rate'])))
+print('- median error rate (near-cognate): '+str(np.nanmedian(subs[subs['mispairing']==1]['Error rate'])))
+
 print("- substitutions likely caused by near-cognate errors: "+str(round(np.sum(subs['mispairing']))) + "("+str(round(100*np.sum(subs['mispairing'])/len(subs),1))+"%)" )
 
 subs.to_pickle(os.path.join(output_dir,'subs'))

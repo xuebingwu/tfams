@@ -1,5 +1,5 @@
-input_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/frameshift-test'
-output_dir = '/home/xw2629/xuebing/amino-acid-substitution/raw-data/frameshift-test/substitution'
+input_dir = '/media/backup16tb/xuebing/PXD010154/liver'
+output_dir = '/media/backup16tb/xuebing/PXD010154/liver/substitution'
 transcriptome = './reference/human.CDS.fa'
 
 """

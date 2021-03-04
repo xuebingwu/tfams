@@ -163,7 +163,7 @@ if len(D) > 0:
     D['substitution'] = float('NaN')
     D.loc[pd.notnull(D['codon']),'substitution'] = D[pd.notnull(D['codon'])].apply(lambda x: x['codon']+' to '+x['destination'],axis=1)
     D.reset_index(inplace = True)
-    #print("detect - "+str(len(D))+" substitutions found in ")
+    print("- unique substitutions saved: "+str(len(D)))    
     D.to_pickle(os.path.join(output_dir,'qSubs.pickle'))
     D.to_csv(os.path.join(output_dir,'qSubs.csv'))
 

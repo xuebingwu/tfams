@@ -269,8 +269,8 @@ if __name__ == "__main__":
 
     parser.add_argument('input_dir',help='Required. Path to a folder with raw data (*.raw)')
 
-    parser.add_argument("--analysis", dest='analysis', action='store',default='NA',
-                         help='combination of frameshift, utr, lncrna, intron, and substitution separated by comma (no space)')
+    parser.add_argument("--analysis", dest='analysis', action='store',default='canonical',
+                         help='combination of canonical, frameshift, utr, lncrna, intron, and substitution separated by comma (no space). Default: canonical')
 
     parser.add_argument("--output-dir",action='store',default='NA',
                          help='Output folder name. Default: same as input')
@@ -301,22 +301,6 @@ if __name__ == "__main__":
     # create the output folder if not exist
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
-        
-    # map to canonical proteome if not already run
-    if not os.path.isdir(args.output_dir):
-        os.mkdir(args.output_dir)
-    # show parameters
-    print("analysis         : standard ")
-    print("- proteome       : "+args.proteome)
-    print("- template xml   : "+args.template_xml_standard)
-    print("- output         : "+args.output_dir)
-    print("- input          : "+args.input_dir)
-    print("                   " + str(nSample) + " raw file(s)")
-    maxquant_standard_search(args.proteome,args.input_dir,args.output_dir,args.template_xml_standard)
-
-    # custom proteome analysis, if specified by --analysis
-    if args.analysis == 'NA':
-        exit()
 
     analyses = args.analysis.split(',')
 
@@ -327,7 +311,9 @@ if __name__ == "__main__":
         if analysis == 'substitution':
             continue
         
-        path_to_custom_proteome = generate_custom_proteome(analysis)
+        path_to_custom_proteome = args.proteome
+        if analysis != 'canonical':
+            path_to_custom_proteome = generate_custom_proteome(analysis)
 
         # create sub-folder for specific type of analysis (frameshift, utr, lncrna, intron etc)
         output_dir = args.output_dir +'/'+analysis         
@@ -344,7 +330,9 @@ if __name__ == "__main__":
 
         # run the analysis
         maxquant_standard_search(path_to_custom_proteome,args.input_dir,output_dir,args.template_xml_standard)
-        filter_maxquant_result(output_dir,args.proteome)
+        
+        if analysis != 'canonical':
+            filter_maxquant_result(output_dir,args.proteome)
         
     if 'substitution' in args.analysis:
         
