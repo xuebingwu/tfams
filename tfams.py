@@ -19,7 +19,9 @@ template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant par
 
 # default of --proteome
 proteome='./reference/human.protein.fa'                # amino acid sequences of all proteins
-variant='./reference/human.variant.fa'                 # peptides caused by SNV
+
+# default of --variant
+variant='./reference/human.variant.fa'                 # peptides encoded by SNV
 
 # default of --transcriptome
 transcriptome='./reference/human.CDS.fa'               # for substitution, only CDS of mRNAs

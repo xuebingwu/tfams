@@ -38,7 +38,7 @@ Proteome: The amino acid sequences for all proteins in fasta format. Used by Max
 
 Transcriptome: For substution or frameshift detection the transcriptome is the coding sequence (CDS only, no UTRs) of all mRNAs in fasta format. Can be downloaded from ENSEMBL: http://ftp.ensembl.org/pub/release-103/fasta/. For others see details below.
 
-To setup the default paths to the proteome and transcriptome files, edit the following lines at the beginning of the script `tfams.py`:
+To setup the default paths to those files, edit the following lines at the beginning of the script `tfams.py`:
 
 ```python
 # default of --proteome
@@ -52,6 +52,15 @@ transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift analysis
 transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
 transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downloaded from GENCODE, protein-coding transcript sequence
 transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
+```
+
+### SNP peptides (optional)
+
+Heterozygous SNPs can lead to variant peptides that will be called substitutions. To mark/remove those SNP peptides, we search against a list of variant peptides encoded by SNPs. See the script `variant.py` for how to generate such a file. Once generated, please update the default path in the script `tfams.py`:
+
+```python
+# default of --variant
+variant='./reference/human.variant.fa'                 # peptides encoded by SNV
 ```
 
 ## Example usage
@@ -77,8 +86,8 @@ python tfams.py raw_file_folder --analysis substitution
 ## Detailed usage:
 
 ```
-usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME] 
-                [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
+usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME]
+                [--proteome PROTEOME] [--variant VARIANT] [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
                 [--standard-xml TEMPLATE_XML_STANDARD]
                 input_dir
 
@@ -87,12 +96,14 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --analysis ANALYSIS   combination of frameshift, utr, lncrna, intron, and substitution separated by comma (no space)
+  --analysis ANALYSIS   combination of canonical, frameshift, utr, lncrna, intron, and substitution
+                        separated by comma (no space). Default: canonical
   --output-dir OUTPUT_DIR
                         Output folder name. Default: same as input
   --transcriptome TRANSCRIPTOME
                         Path to transcriptome fasta file. See README for details
   --proteome PROTEOME   Path to proteome fasta file
+  --variant VARIANT     Path to variant peptides caused by SNV
   --substitution-xml TEMPLATE_XML_SUBSTITUTION
                         A template xml file for substitution detection
   --standard-xml TEMPLATE_XML_STANDARD
