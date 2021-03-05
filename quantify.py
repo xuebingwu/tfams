@@ -147,13 +147,14 @@ for i,j in gb:
         d['base_sequence'] = base_sequence
         d['modified_sequence'] = modified_sequence
         d['DP Time Difference'] = ref_dp['DP Time Difference']
+        d['SNV'] = ref_dp['SNV']
         D = D.append(d)
     #else:
     #    print("substitution not found in matchedFeatures.txt: "+str([charge, base_sequence, modified_sequence]))
 
 if len(D) > 0:
     print("- unique substitutions quantified: "+str(len(D)))
-    D['Ratio'] = D['DP']/(D['Base']+D['DP'])
+    D['Ratio'] =  D['DP']/D['Base'] # D['DP']/(D['Base']+D['DP']) 
     print('- median error rate: '+str(np.median(D['Ratio'])))
     print('- median error rate (near-cognate): '+str(round(np.median(D[D['mispairing']==1]['Ratio']),5)))
     print('- median error rate for error rate < 0.05: '+str(round(np.mean(D[D['Ratio']<0.05]['Ratio']),5)))

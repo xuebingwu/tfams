@@ -1,6 +1,7 @@
-input_dir = '/media/backup16tb/xuebing/PXD010154/liver'
-output_dir = '/media/backup16tb/xuebing/PXD010154/liver/substitution'
+input_dir = '/home/xw2629/proteomics/PXD010154/heart'
+output_dir = '/home/xw2629/proteomics/PXD010154/heart/substitution'
 transcriptome = './reference/human.CDS.fa'
+path_to_variant_peptide = './reference/human.variant.fa'
 
 """
 PARAMETERS FOR DETECT

@@ -19,6 +19,7 @@ template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant par
 
 # default of --proteome
 proteome='./reference/human.protein.fa'                # amino acid sequences of all proteins
+variant='./reference/human.variant.fa'                 # peptides caused by SNV
 
 # default of --transcriptome
 transcriptome='./reference/human.CDS.fa'               # for substitution, only CDS of mRNAs
@@ -210,7 +211,7 @@ def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml)
     else:
         print("MaxQuant result found in the output folder. To run again please delete existing output folder: "+output_dir)
     
-def filter_maxquant_result(output_dir,path_to_proteome):
+def filter_maxquant_result(output_dir,path_to_proteome,path_to_variant_peptide):
     '''
     filter 1: potential contamiants
     filter 2: peptides found in the normal/canonical proteome
@@ -241,11 +242,30 @@ def filter_maxquant_result(output_dir,path_to_proteome):
         if pep.at[i,'Sequence'] in allpep:
             pep=pep.drop(i)
     print(str(len(pep))+" peptides remain after removing canonical peptides")
-    pep = pep[~pep['Intensity'].isna() & pep['Intensity']>0 & ~pep.Proteins.isna()]
-    print(str(len(pep))+" peptides remain after removing peptides missing intensity values or assigned proteins")
+    
+    pep = pep[~pep['Intensity'].isna()]
+    pep = pep[pep['Intensity']>0]
+    print(str(len(pep))+" peptides remain after removing peptides with no positive intensity values")
+
+    pep = pep[~pep['Proteins'].isna()]
+    print(str(len(pep))+" peptides remain after removing peptides with no assigned proteins")
+    
+    # SNPs
+    pep['SNV'] = 0
+    n=0
+    if os.path.isfile(path_to_variant_peptide):
+        variant_pep = open(path_to_variant_peptide).read().replace("\n","")
+        for i in pep.index:
+            if pep.at[i,'Sequence'] in variant_pep:
+                #pep=pep.drop(i)
+                pep.at[i,'SNV'] = 1
+                n=n+1
+        print(str(n)+" peptides are marked as potential SNP peptides")
+    else:
+        print("Skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
+    
     pep.to_csv(path_to_evidence+'-filtered.txt')  
     print('filtered peptides saved to '+path_to_evidence+'-filtered.txt')
-    
     return len(pep)
     
 def quantification_and_plot(output_dir,canonical_output_dir):
@@ -330,6 +350,9 @@ if __name__ == "__main__":
               
     parser.add_argument("--proteome", action='store',default=proteome,
                          help='Path to proteome fasta file')
+    
+    parser.add_argument("--variant", action='store',default=variant,
+                         help='Path to variant peptides caused by SNV')
 
     parser.add_argument("--substitution-xml", dest='template_xml_substitution', action='store',default=template_xml_substitution,
                          help='A template xml file for substitution detection')
@@ -382,7 +405,7 @@ if __name__ == "__main__":
         maxquant_standard_search(path_to_custom_proteome,args.input_dir,output_dir,args.template_xml_standard)
         
         if analysis != 'canonical':
-            npep = filter_maxquant_result(output_dir,args.proteome)
+            npep = filter_maxquant_result(output_dir,args.proteome,args.variant)
         
     if 'substitution' in args.analysis:
         
@@ -393,11 +416,13 @@ if __name__ == "__main__":
         f.write("input_dir = '"+args.input_dir+"'\n")
         f.write("output_dir = '"+args.output_dir+"'\n")
         f.write("transcriptome = '"+args.transcriptome+"'\n")
+        f.write("path_to_variant_peptide = '"+args.variant+"'\n")
         f.close()    
         os.system('cat params.core >> params.py')
 
         print("Path to files:")
         print("- proteome          : "+args.proteome)
+        print("- variant           : "+args.variant)
         print("- transcriptome     : "+args.transcriptome)
         print("- template xml      : "+args.template_xml_substitution)
         print("- output            : "+args.output_dir)

@@ -350,7 +350,19 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
     subs['Error rate'] = subs['DP Intensity']/(subs['BP Intensity']+subs['DP Intensity'])
     #plt.hist(np.log10(subs['Error rate']),bins=100)
 
-
+def variant_filter(subs,path_to_variant_peptide): #xw
+    # SNPs
+    subs['SNV'] = 0
+    n=0
+    if os.path.isfile(path_to_variant_peptide):
+        variant_pep = open(path_to_variant_peptide).read().replace("\n","")
+        for i in subs.index:
+            if subs.at[i,'modified_sequence'] in variant_pep:
+                subs.at[i,'SNV'] = 1
+                n=n+1
+        print("- peptides marked as potential SNP peptides: "+str(n))
+    else:
+        print("Skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
     
 #print('- generate codon <-> aa table')
 warnings.filterwarnings("ignore")
@@ -576,13 +588,17 @@ subs = subs.iloc[:cut_off+1]
 #%%
 subs = subs[~subs.decoy]
 
+#xw
+variant_filter(subs,path_to_variant_peptide)
+
 print("- number of substitutions: "+str(len(subs)))
 
-
+'''
 print("- calculate error rate")
 calculate_error_rate(path_to_evidence,path_to_allPeptides,subs)
 print('- median error rate: '+str(np.nanmedian(subs['Error rate'])))
 print('- median error rate (near-cognate): '+str(np.nanmedian(subs[subs['mispairing']==1]['Error rate'])))
+'''
 
 print("- substitutions likely caused by near-cognate errors: "+str(round(np.sum(subs['mispairing']))) + "("+str(round(100*np.sum(subs['mispairing'])/len(subs),1))+"%)" )
 
