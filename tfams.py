@@ -210,6 +210,8 @@ def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml)
         cmd = MaxQuantCmd+ " " + output_dir + "/mqpar.xml "
         print(cmd)
         os.system(cmd)
+        print("Deleting intermediate files from MaxQuant run")
+        clean_up(input_dir,output_dir)
     else:
         print("MaxQuant result found in the output folder. To run again please delete existing output folder: "+output_dir)
     
@@ -309,6 +311,32 @@ def quantification_and_plot(output_dir,canonical_output_dir):
     plt.ylabel('log10 (Intensity)')
     plt.xticks([1], ['Protein'])
 
+def clean_up(input_dir,output_dir):
+    '''
+    input_dir: for each X.raw file, remove corresponding X.index and folder X
+    output_dir: 
+    '''
+    
+    # make sure output file exists
+    if not os.path.isfile(output_dir+'/combined/txt/evidence.txt'):
+        print("warning: it appears the analysis has not been completed. skip clean up")
+        return 0
+    
+    # delete everything under 'combined' except 'txt'
+    os.system('mv '+output_dir+'/combined/txt '+output_dir+'/')
+    os.system('rm -rf '+output_dir+'/combined/*')
+    os.system('mv '+output_dir+'/txt '+output_dir+'/combined/')
+    
+    # clean up intermediate files in input folder 
+    if os.path.isdir(input_dir):
+        files = os.listdir(input_dir)
+        for file in files:
+            if file[-4:] == ".raw":
+                os.system('rm '+input_dir+'/'+file[:-4]+'.index')
+                os.system('rm -rf '+input_dir+'/'+file[:-4])
+    else:
+        print("warning: input folder not found: "+input_dir)
+    
 # NOT USED!!! slows the analysis by a lot
 def parse_fragments(header,translation,min_pep_len):
     '''
@@ -441,6 +469,8 @@ if __name__ == "__main__":
             cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
             print('- '+cmd)
             os.system(cmd)
+            print("Deleting intermediate files from MaxQuant run")
+            clean_up(args.input_dir,args.output_dir)
         print("Detection and filtering")
         import detect
         import quantify

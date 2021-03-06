@@ -1,5 +1,5 @@
-input_dir = '/home/xw2629/proteomics/PXD010154/heart'
-output_dir = '/home/xw2629/proteomics/PXD010154/heart/substitution'
+input_dir = '/media/backup16tb/xuebing/PXD006675/SepV/SepV3'
+output_dir = '/media/backup16tb/xuebing/PXD006675/SepV/SepV3/substitution'
 transcriptome = './reference/human.CDS.fa'
 path_to_variant_peptide = './reference/human.variant.fa'
 

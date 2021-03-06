@@ -7,11 +7,11 @@ TFAMS is a pipeline for detecting translation errors from mass spectrometry data
 
 The pipeline is written in Python 3 and has only been tested in Linux (Ubuntu 20.04.2 LTS).
 
-### Python packages
+#### Python packages
 
 `numpy, scipy, pandas, biopython, matplotlib (for plotting)`
 
-### MaxQuant
+#### MaxQuant
 
 The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to run in Linux commandline, follow the instructions here to download `MaxQuant` and install `.NET CORE`: http://coxdocs.org/doku.php?id=maxquant:common:download_and_installation
 
@@ -21,18 +21,7 @@ Once installed, please update the path to `MaxQuantCmd.exe` in the beginning of 
 MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 ``` 
 
-### Template parameter file (xml) for MaxQuant
-Template xml files with MaxQuant parameters are provided in the folder `./template_xml`. Typically there is no need to change these files. The path to the default xml files can be edited in the script `tfams.py`:
-
-```python
-# default of --standard-xml
-template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
-
-# default of --substitution-xml
-template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant parameters with dependent peptide search and match between runs
-```
-
-### Reference proteome and transcriptome
+#### Reference proteome and transcriptome
 
 Proteome: The amino acid sequences for all proteins in fasta format. Used by MaxQuant and can be downloaded from UniProt: https://www.uniprot.org/proteomes/ or GENCODE: https://www.gencodegenes.org/
 
@@ -54,7 +43,19 @@ transcriptome_mrna='./reference/human.mRNA.fa'         # for UTR analysis, downl
 transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, downloaded from UCSC Table browser, gencode.v32, +9nt flanking sequence
 ```
 
-### SNP peptides (optional)
+#### Template parameter file (xml) for MaxQuant (provided)
+Template xml files with MaxQuant parameters are provided in the folder `./template_xml`. Typically there is no need to change these files. The path to the default xml files can be edited in the script `tfams.py`:
+
+```python
+# default of --standard-xml
+template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
+
+# default of --substitution-xml
+template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant parameters with dependent peptide search and match between runs
+```
+
+
+#### SNP peptides (optional)
 
 Heterozygous SNPs can lead to variant peptides that will be called substitutions. To mark/remove those SNP peptides, we search against a list of variant peptides encoded by SNPs. See the script `variant.py` for how to generate such a file. Once generated, please update the default path in the script `tfams.py`:
 
