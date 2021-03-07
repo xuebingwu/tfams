@@ -318,7 +318,7 @@ def clean_up(input_dir,output_dir):
     '''
     
     # make sure output file exists
-    if not os.path.isfile(output_dir+'/combined/txt/evidence.txt'):
+    if not os.path.isfile(output_dir+'/combined/txt/allPeptides.txt'):
         print("warning: it appears the analysis has not been completed. skip clean up")
         return 0
     
@@ -382,7 +382,7 @@ if __name__ == "__main__":
                          help='Path to proteome fasta file')
     
     parser.add_argument("--variant", action='store',default=variant,
-                         help='Path to variant peptides caused by SNV')
+                         help='Path to variant peptides created by SNV. To skip, set it NA')
 
     parser.add_argument("--substitution-xml", dest='template_xml_substitution', action='store',default=template_xml_substitution,
                          help='A template xml file for substitution detection')

@@ -16,6 +16,7 @@ def extract_amino_acid_sequence_flanking_missense_variants(variant_file,proteome
             - amino acid sequences of all proteins
             - can be downloaded from GENCODE (e.g. gencode.v37.pc_translations.fa)
             - header needs to be separted by '|' and has ENSEMBL protein id in field 1, i.e. >ENSP00000478421.2|(other-info)
+            - the one from uniprot will not work.
         output_file
             - output file path and name
         flanking_len
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('variant',help='Required. Path to input, *.vcf.gz or VEP annotated missense variants')
+    parser.add_argument('variant',help='Required. Path to input, VEP annotated missense variants or *.vcf.gz, dbSNP format')
     parser.add_argument('proteome',help='Required. Path to a folder with raw data (*.raw)')
 
     parser.add_argument("--output",action='store',default='NA',
@@ -96,8 +97,8 @@ if __name__ == "__main__":
             print("--gff3 is required if the variant is *.vcf.gz")
             exit()
         else:
-            print("Run snp2pep.sh")
-            #os.system('./snp2pep.sh '+args.variant+' '+args.gff3)
+            print("Run dbSNP_missense.sh")
+            os.system('./dbSNP_missense.sh '+args.variant+' '+args.gff3)
             args.variant = args.variant+'.missense_variant'
             
     if args.output == 'NA':

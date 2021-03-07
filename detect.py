@@ -588,10 +588,11 @@ subs = subs.iloc[:cut_off+1]
 #%%
 subs = subs[~subs.decoy]
 
+print("- number of substitutions: "+str(len(subs)))
+
 #xw
 variant_filter(subs,path_to_variant_peptide)
 
-print("- number of substitutions: "+str(len(subs)))
 
 '''
 print("- calculate error rate")

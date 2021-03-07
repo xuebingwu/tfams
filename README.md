@@ -18,7 +18,7 @@ The pipeline uses MaxQuant to search for peptide search. To allow MaxQuant to ru
 Once installed, please update the path to `MaxQuantCmd.exe` in the beginning of the script `tfams.py`:
 
 ```python
-MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
+MaxQuantCmd="dotnet ~/software/MaxQuant/bin/MaxQuantCmd.exe"
 ``` 
 
 #### Reference proteome and transcriptome
