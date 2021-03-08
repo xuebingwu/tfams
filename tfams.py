@@ -4,12 +4,13 @@ A pipeline for detecting translation errors from proteomics data
 https://github.com/xuebingwu/tfams
 
 Xuebing Wu
+
 '''
 
 # Required: please update the path to MaxQuant binary
 MaxQuantCmd="dotnet /home/xw2629/software/MaxQuant/bin/MaxQuantCmd.exe"
 
-### Optional but required if want to use default settings
+### Optional but required if default settings will be used
 
 # default of --standard-xml
 template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
@@ -38,6 +39,7 @@ from generate_xml import *
 from Bio import SeqIO
 import time
 import pandas as pd
+import numpy as np
 
 def generate_UTR_proteome(transcriptome):
     '''
@@ -337,6 +339,97 @@ def clean_up(input_dir,output_dir):
     else:
         print("warning: input folder not found: "+input_dir)
     
+def substitution_second_pass(path_to_subs,input_dir,output_dir,standard_xml):
+    '''
+    create a peptide database with only substitutions and their base peptide
+    then run maxquant standard search again to get quantifications
+    '''
+    
+    subs = pd.read_csv(path_to_subs)
+    
+    path_to_2nd_evidence = output_dir+'/second_pass/combined/txt/evidence.txt'
+    
+    if not os.path.isfile(path_to_2nd_evidence):
+        print("- 2nd pass: get unique sequences for each sub and base peptide")
+        bp_seqs = {}
+        for i in subs.index:
+            bp_seqs[subs.at[i,'modified_sequence']] = subs.at[i,'DP Base Sequence']
+        print('- 2nd pass: '+str(len(bp_seqs))+' unique peptides with substitutions')
+        print("- 2nd pass: write into fasta file: "+path_to_subs+'-uniq-seq.fa')
+        out = open(path_to_subs+'-uniq-seq.fa','w')
+        for key in bp_seqs:
+            out.write('>sub|'+key+'|\n'+key+'\n')
+            out.write('>sub|'+bp_seqs[key]+'|\n'+bp_seqs[key]+'\n')
+        out.close()
+
+        print("- 2nd pass: maxquant search")
+        maxquant_standard_search(path_to_subs+'-uniq-seq.fa',input_dir,output_dir+'/second_pass',standard_xml)
+    else:
+        print("- 2nd pass already done. To run again, please delete "+path_to_2nd_evidence)
+    
+def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,output_dir):
+    subs = pd.read_csv(path_to_subs)
+    evidence2 = pd.read_csv(path_to_2nd_evidence,sep='\t')
+    intensities = {}
+    for i in evidence2.index:
+        if evidence2.at[i,'Intensity'] == 0:
+            continue
+        seq = evidence2.at[i,'Sequence']
+        if not (seq in intensities):
+            intensities[seq] = 0
+        if not np.isnan(evidence2.at[i,'Intensity']):
+            intensities[seq] += evidence2.at[i,'Intensity']
+    
+    # calculate intensity ratio
+    uniq_subs = pd.DataFrame([],columns=['modified_sequence',
+                                         'reference_sequence',
+                                         'modified_intensity',
+                                         'reference_intensity',
+                                         'log10_mod_to_ref_intensity_ratio',
+                                         'codon',
+                                         'destination',
+                                         'origin',
+                                         'mispairing',
+                                         'position',
+                                         'protein'])
+        
+    computed=[]
+    for i in subs.index:
+        dpseq = subs.at[i,'modified_sequence']
+        bpseq = subs.at[i,'DP Base Sequence']
+        if not(dpseq in computed):
+            computed.append(dpseq)
+            if dpseq in intensities and bpseq in intensities:
+                uniq_subs=uniq_subs.append(pd.DataFrame([[dpseq,
+                                                          bpseq,
+                                                          intensities[dpseq],
+                                                          intensities[bpseq],
+                                                          np.log10(intensities[dpseq]/intensities[bpseq]),
+                                                          subs.at[i,'codon'],
+                                                          subs.at[i,'destination'],
+                                                          subs.at[i,'origin'],
+                                                          subs.at[i,'mispairing'],
+                                                          subs.at[i,'position'],
+                                                          subs.at[i,'protein']]], columns=uniq_subs.columns))
+    uniq_subs.to_csv(os.path.join(output_dir,'uniq_subs.csv'))
+    
+def variant_filter(path_to_uniq_subs,path_to_variant_peptide):
+    uniq_subs = pd.read_csv(path_to_uniq_subs)
+
+    # SNPs
+    uniq_subs['SNV'] = 0
+    n=0
+    if os.path.isfile(path_to_variant_peptide):
+        variant_pep = open(path_to_variant_peptide).read().replace("\n","")
+        for i in uniq_subs.index:
+            if uniq_subs.at[i,'modified_sequence'] in variant_pep:
+                uniq_subs.at[i,'SNV'] = 1
+                n=n+1
+        print("- peptides marked as potential SNP peptides: "+str(n))
+    else:
+        print("Skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
+    uniq_subs.to_csv(path_to_uniq_subs[:-4]+'-snv.csv')
+        
 # NOT USED!!! slows the analysis by a lot
 def parse_fragments(header,translation,min_pep_len):
     '''
@@ -471,7 +564,19 @@ if __name__ == "__main__":
             os.system(cmd)
             print("Deleting intermediate files from MaxQuant run")
             clean_up(args.input_dir,args.output_dir)
-        print("Detection and filtering")
-        import detect
-        import quantify
-        import plot
+        if os.path.isfile(args.output_dir+'/subs.csv'):
+            print("Substitution detection results found ")
+            print("- to run again, please delete the file "+args.output_dir+'/subs.csv')
+        else:
+            print("Substitution detection and filtering")
+            import detect
+            import quantify
+            import plot
+        print("Second pass")
+        substitution_second_pass(args.output_dir+'/subs.csv',args.input_dir,args.output_dir,args.template_xml_standard)
+        print("Substitution quantification")
+        substitution_quantification_with_2nd_pass(args.output_dir+'/subs.csv',args.output_dir+'/second_pass/combined/txt/evidence.txt',args.output_dir)
+        print("Mark SNPs")
+        variant_filter(args.output_dir+'/uniq_subs.csv',args.variant)
+
+        

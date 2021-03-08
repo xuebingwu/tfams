@@ -350,19 +350,7 @@ def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
     subs['Error rate'] = subs['DP Intensity']/(subs['BP Intensity']+subs['DP Intensity'])
     #plt.hist(np.log10(subs['Error rate']),bins=100)
 
-def variant_filter(subs,path_to_variant_peptide): #xw
-    # SNPs
-    subs['SNV'] = 0
-    n=0
-    if os.path.isfile(path_to_variant_peptide):
-        variant_pep = open(path_to_variant_peptide).read().replace("\n","")
-        for i in subs.index:
-            if subs.at[i,'modified_sequence'] in variant_pep:
-                subs.at[i,'SNV'] = 1
-                n=n+1
-        print("- peptides marked as potential SNP peptides: "+str(n))
-    else:
-        print("Skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
+
     
 #print('- generate codon <-> aa table')
 warnings.filterwarnings("ignore")
@@ -590,8 +578,7 @@ subs = subs[~subs.decoy]
 
 print("- number of substitutions: "+str(len(subs)))
 
-#xw
-variant_filter(subs,path_to_variant_peptide)
+
 
 
 '''

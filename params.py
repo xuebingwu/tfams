@@ -1,5 +1,5 @@
-input_dir = '/media/backup16tb/xuebing/PXD010154/smoothmuscle'
-output_dir = '/media/backup16tb/xuebing/PXD010154/smoothmuscle/substitution'
+input_dir = '/home/xw2629/proteomics/PXD010154/tonsil'
+output_dir = '/home/xw2629/proteomics/PXD010154/tonsil/substitution'
 transcriptome = './reference/human.CDS.fa'
 path_to_variant_peptide = './reference/human.variant.fa'
 
