@@ -35,7 +35,7 @@ def valid_raw_folder(raw_dir):
         print("WARNING: raw file folder doesn't exist: "+raw_dir,file=sys.stderr)
     return nSample
         
-def generate_xml(template_xml,raw_dir,output_dir,proteome):
+def generate_xml(template_xml,raw_dir,output_dir,proteome,nThread):
     nSample = valid_raw_folder(raw_dir)
     if nSample < 1: 
         return nSample # raw_dir not exist or has no *.raw files
@@ -43,6 +43,11 @@ def generate_xml(template_xml,raw_dir,output_dir,proteome):
         return -2 # template xml file not found
     if not os.path.isdir(output_dir):
         os.mkdir(output_dir)
+        
+    nThread = int(nThread)
+    if nThread < 1:
+        nThread = 1
+    
     fin=open(template_xml,'r')
     fout=open(os.path.abspath(output_dir)+'/mqpar.xml','w')
     skip=False
@@ -54,6 +59,8 @@ def generate_xml(template_xml,raw_dir,output_dir,proteome):
                 fout.write(line)
         elif '<fixedCombinedFolder>' in line:
             fout.write("<fixedCombinedFolder>" + os.path.abspath(output_dir) + "</fixedCombinedFolder>\n")
+        elif '<numThreads>' in line: #<numThreads>4</numThreads>
+            fout.write("<numThreads>" + str(nThread) + "</numThreads>\n")
         elif '<filePaths>' in line:
             fout.write(line)
             skip=True
@@ -106,6 +113,9 @@ if __name__ == "__main__":
     parser.add_argument("--proteome", dest='proteome', action='store',default='NA',
                          help='Path to proteome fasta file. Default: use the one in the template xml')
 
+    parser.add_argument("--thread", dest='thread', action='store',default=4,type=int,
+                         help='Number fo threads. Default: 4')
+
     args = parser.parse_args()
 
     if args.raw_dir == 'NA' or args.template_xml =='NA':
@@ -119,4 +129,4 @@ if __name__ == "__main__":
     if args.output_dir == 'NA':
         args.output_dir = args.raw_dir
     
-    generate_xml(args.template_xml,args.raw_dir,args.output_dir,args.proteome)
+    generate_xml(args.template_xml,args.raw_dir,args.output_dir,args.proteome,args.thread)

@@ -36,10 +36,20 @@ transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, do
 import argparse
 import os
 from generate_xml import *
+from substitution import *
 from Bio import SeqIO
 import time
 import pandas as pd
 import numpy as np
+
+
+# for plotting
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+
+# noncanonical translation
 
 def generate_UTR_proteome(transcriptome):
     '''
@@ -106,7 +116,6 @@ def generate_lncRNA_or_intron_proteome(transcriptome,analysis):
     '''
     if not os.path.isfile(transcriptome):
         return -1 # file not found
-    analysis = str(analysis).lower()
     
     out = open(transcriptome+'-'+analysis+'-proteome.fa','w')
 
@@ -165,7 +174,6 @@ def generate_frameshift_proteome(transcriptome):
     return 0
         
 def generate_custom_proteome(analysis):
-    analysis = analysis.lower()
     
     print('Creating custom proteome from transcriptome: ')
     if analysis == 'lncrna':
@@ -198,7 +206,10 @@ def generate_custom_proteome(analysis):
         
     return path_to_custom_proteome
 
-def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml):
+
+# maxquant 
+
+def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml,thread):
     # standard maxquant analysis
     
     # check if already done
@@ -208,12 +219,12 @@ def maxquant_standard_search(path_to_proteome,input_dir,output_dir,template_xml)
         print("---------------------------------")
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
-        generate_xml(template_xml,input_dir,output_dir,path_to_proteome)
+        generate_xml(template_xml,input_dir,output_dir,path_to_proteome,thread)
         cmd = MaxQuantCmd+ " " + output_dir + "/mqpar.xml "
         print(cmd)
         os.system(cmd)
         print("Deleting intermediate files from MaxQuant run")
-        clean_up(input_dir,output_dir)
+        clean_up_after_maxquant_run(input_dir,output_dir)
     else:
         print("MaxQuant result found in the output folder. To run again please delete existing output folder: "+output_dir)
     
@@ -274,6 +285,7 @@ def filter_maxquant_result(output_dir,path_to_proteome,path_to_variant_peptide):
     print('filtered peptides saved to '+path_to_evidence+'-filtered.txt')
     return len(pep)
     
+'''
 def quantification_and_plot(output_dir,canonical_output_dir):
     # count, median, mean intensity of identified peptides
     # count, median, mean intensity of protein groups with identified peptides
@@ -312,8 +324,10 @@ def quantification_and_plot(output_dir,canonical_output_dir):
     plt.violinplot([np.log10(protein_intensity_df.Intensity)],showmeans=False,showmedians=True)
     plt.ylabel('log10 (Intensity)')
     plt.xticks([1], ['Protein'])
+'''
 
-def clean_up(input_dir,output_dir):
+
+def clean_up_after_maxquant_run(input_dir,output_dir):
     '''
     input_dir: for each X.raw file, remove corresponding X.index and folder X
     output_dir: 
@@ -339,17 +353,18 @@ def clean_up(input_dir,output_dir):
     else:
         print("warning: input folder not found: "+input_dir)
     
-def substitution_second_pass(path_to_subs,input_dir,output_dir,standard_xml):
+def substitution_second_pass(path_to_subs,input_dir,output_dir,standard_xml,thread):
     '''
     create a peptide database with only substitutions and their base peptide
     then run maxquant standard search again to get quantifications
     '''
     
-    subs = pd.read_csv(path_to_subs)
-    
     path_to_2nd_evidence = output_dir+'/second_pass/combined/txt/evidence.txt'
     
     if not os.path.isfile(path_to_2nd_evidence):
+        
+        subs = pd.read_csv(path_to_subs)
+
         print("- 2nd pass: get unique sequences for each sub and base peptide")
         bp_seqs = {}
         for i in subs.index:
@@ -363,7 +378,7 @@ def substitution_second_pass(path_to_subs,input_dir,output_dir,standard_xml):
         out.close()
 
         print("- 2nd pass: maxquant search")
-        maxquant_standard_search(path_to_subs+'-uniq-seq.fa',input_dir,output_dir+'/second_pass',standard_xml)
+        maxquant_standard_search(path_to_subs+'-uniq-seq.fa',input_dir,output_dir+'/second_pass',standard_xml,thread)
     else:
         print("- 2nd pass already done. To run again, please delete "+path_to_2nd_evidence)
     
@@ -372,12 +387,10 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
     evidence2 = pd.read_csv(path_to_2nd_evidence,sep='\t')
     intensities = {}
     for i in evidence2.index:
-        if evidence2.at[i,'Intensity'] == 0:
-            continue
-        seq = evidence2.at[i,'Sequence']
-        if not (seq in intensities):
-            intensities[seq] = 0
-        if not np.isnan(evidence2.at[i,'Intensity']):
+        if evidence2.at[i,'Intensity'] > 0:
+            seq = evidence2.at[i,'Sequence']
+            if not (seq in intensities):
+                intensities[seq] = 0
             intensities[seq] += evidence2.at[i,'Intensity']
     
     # calculate intensity ratio
@@ -414,6 +427,11 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
     uniq_subs.to_csv(os.path.join(output_dir,'uniq_subs.csv'))
     
 def variant_filter(path_to_uniq_subs,path_to_variant_peptide):
+    
+    if os.path.isfile(path_to_uniq_subs[:-4]+'-snv.csv'):
+        print("- skip variant filter: results already found at: "+path_to_uniq_subs[:-4]+'-snv.csv')
+        return 0
+        
     uniq_subs = pd.read_csv(path_to_uniq_subs)
 
     # SNPs
@@ -427,9 +445,165 @@ def variant_filter(path_to_uniq_subs,path_to_variant_peptide):
                 n=n+1
         print("- peptides marked as potential SNP peptides: "+str(n))
     else:
-        print("Skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
+        print("- skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
     uniq_subs.to_csv(path_to_uniq_subs[:-4]+'-snv.csv')
         
+def plotting(output_dir):
+    
+    # histogram of error rate
+    nbin = 30
+    uniq_subs = pd.read_csv(output_dir+'/uniq_subs-snv.csv')
+    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio,nbin,alpha=.3,label='All,'+str(len(uniq_subs)))
+    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.mispairing==1],nbin,alpha=.3,label='near-cognate,'+str(sum(uniq_subs.mispairing==1)))
+    if 'SNV' in uniq_subs.columns:
+        plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.SNV==1],nbin,alpha=.3,label='SNV,'+str(sum(uniq_subs.SNV==1)))
+    plt.legend()
+    plt.savefig(output_dir+'/uniq-subs-intensity-ratio-hist.pdf')  
+    
+    # plot aa to aa heatmap
+    aa2aa = aa_to_aa_count_matrix(uniq_subs)
+    plot_matrix(np.log2(aa2aa+1),output_dir+'/uniq-subs-aa2aa-log-heatmap.pdf',10)
+    aa2aa.to_csv(output_dir+'/uniq-subs-aa2aa-matrix.csv', header=True, index=True, float_format='%d')
+
+    # plot codon to aa heatmap
+    codon2aa = codon_to_aa_count_matrix(uniq_subs)
+    #codon2aa = codon_to_aa_count_matrix(uniq_subs,'','') # do not mask stop codons or PTMs
+    #codon2aa = codon_to_aa_count_matrix(uniq_subs,'mask stop codons','mask PTM') # do not mask stop codons or PTMs
+    #codon2aa = codon_to_aa_count_matrix(uniq_subs,'delete stop codons','mask PTM') # do not mask stop codons or PTMs
+
+    plot_matrix(np.log2(codon2aa+1),output_dir+'/uniq-subs-codon2aa-log-heatmap.pdf')
+    codon2aa.to_csv(output_dir+'/uniq-subs-codon2aa-matrix.csv', header=True, index=True, float_format='%d')
+    
+
+def plot_matrix(m,filename,fontsize=5):
+    fig, ax = plt.subplots()
+    im = ax.imshow(m,cmap='magma')
+
+    ax.set_facecolor("gray")
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(len(m.columns)))
+    ax.set_yticks(np.arange(len(m.index)))
+    # ... and label them with the respective list entries
+    ax.set_xticklabels(m.columns,fontsize=fontsize)
+    ax.set_yticklabels(m.index,fontsize=fontsize)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=0, ha="center",
+             rotation_mode="anchor")
+
+    # Loop over data dimensions and create text annotations.
+    '''
+    for i in range(len(index)):
+        for j in range(len(column)):
+            text = ax.text(j, i, m[i, j],ha="center", va="center", color="w")
+    '''
+
+    #ax.set_title("Title")
+    fig.tight_layout()
+    #plt.show()
+    plt.savefig(filename)  
+
+    '''
+    # example
+    index = ["AAA", "CCC", "UUU", "GGG", "CGA", "GUG", "UGG"]
+    columns = list('ABCDEFG')
+    d = np.array([[0.8, 2.4, 2.5, 3.9, 0.0, 4.0, 0.0],
+                            [2.4, 0.0, 4.0, 1.0, 2.7, 0.0, 0.0],
+                            [1.1, 2.4, 0.8, 4.3, 1.9, 4.4, 0.0],
+                            [0.6, 0.0, 0.3, 0.0, 3.1, 0.0, 0.0],
+                            [0.7, 1.7, 0.6, 2.6, 2.2, 6.2, 0.0],
+                            [1.3, 1.2, 0.0, 0.0, 0.0, 3.2, 5.1],
+                            [0.1, 2.0, 0.0, 1.4, 0.0, 1.9, 6.3]])
+    m = pd.DataFrame(data = d, index = index, columns=columns,dtype=float)
+    plot_matrix(m,'test.pdf')
+    '''
+
+def codon_to_aa_count_matrix(uniq_subs):
+    # mask_stop_codons: 'mask stop codons' or 'delete stop codons' or else
+    # mask_potential_PTMs: 'mask PTM' or else
+    
+    uniq_subs = uniq_subs[pd.notnull(uniq_subs['codon'])]
+    uniq_subs['codon'] = uniq_subs['codon'].map(lambda x: x.replace('T','U'))
+    counts = uniq_subs[['codon','destination','origin']].groupby(['codon','destination']).count()	
+
+    bases = 'UCAG'
+    codons = [a+b+c for a in bases for b in bases for c in bases]
+    matrix = pd.DataFrame(data = 0, index = codons, columns=list('ACDEFGHKLMNPQRSTVWY'),dtype=float)
+    
+    for codon,destination in counts.index:
+        matrix.loc[codon,destination] = counts.origin[codon][destination]
+    
+    # the following code will gray out stop codons or delete them
+    for label in matrix.index:
+        ## the following code will gray out stop codons
+        if label == 'UGA' or label == 'UAG' or label == 'UAA':
+            #if mask_stop_codons == 'mask stop codons':
+            matrix.loc[label] = 0 #float('NaN')
+            #elif mask_stop_codons == 'delete stop codons':
+            #    matrix.drop(label)
+        
+    amino_acids = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG' 
+    codon_table = get_codon_table(codons,amino_acids)
+    inverted_codon_table = get_inverted_codon_table(codons,amino_acids)
+    inverted_codon_table['L'] = inverted_codon_table['L'] + inverted_codon_table['I']
+
+    exact_PTM_spec_list =   ['A to I',
+                                 'A to L',
+                                 'S to T',
+                                 'S to D',
+                                 'S to E',
+                                 'P to E',
+                                 'T to E',
+                                 'N to D',
+                                 'N to Q',
+                                 'N to C',
+                                 'D to E',
+                                 'Q to E',
+                                 'K to C',
+                                 'F to C',
+                                 'F to Y']
+
+
+    ## the following code will gray out potential PTM substitutions
+    for label in matrix.index:
+        for col in matrix.columns:
+            if (label in inverted_codon_table[col]) or (codon_table[label] +' to '+col in exact_PTM_spec_list):
+                matrix.loc[label, col] = 0#float('NaN')
+    
+    matrix.rename(columns={"L": "I\nL"},inplace=True)
+
+    return matrix
+
+def aa_to_aa_count_matrix(uniq_subs):
+    exact_PTM_spec_list =   ['A to I',
+                             'A to L',
+                             'S to T',
+                             'S to D',
+                             'S to E',
+                             'P to E',
+                             'T to E',
+                             'N to D',
+                             'N to Q',
+                             'N to C',
+                             'D to E',
+                             'Q to E',
+                             'K to C',
+                             'F to C',
+                             'F to Y']
+    matrix = pd.DataFrame(data = 0, index =list('ACDEFGHKLMNPQRSTVWY'), columns=list('ACDEFGHKLMNPQRSTVWY'),dtype=float)
+    for i in uniq_subs.index:
+        matrix.loc[uniq_subs.at[i,'origin'].replace('I','L'),uniq_subs.at[i,'destination']] += 1
+    matrix.rename(columns={"L": "I\nL"},inplace=True)
+    matrix.rename(index={"L": "I/L"},inplace=True)
+    
+    for label in matrix.index:
+        for col in matrix.columns:
+            if label +' to '+col in exact_PTM_spec_list:
+                matrix.loc[label, col] = 0#float('NaN')
+                
+    return matrix
+
 # NOT USED!!! slows the analysis by a lot
 def parse_fragments(header,translation,min_pep_len):
     '''
@@ -482,6 +656,9 @@ if __name__ == "__main__":
     
     parser.add_argument("--standard-xml", dest='template_xml_standard', action='store',default=template_xml_standard,
                          help='A template xml file for standard MaxQuant search')
+    
+    parser.add_argument("--thread", dest='thread', action='store',default=4,type=int,
+                         help='Number fo threads for MaxQuant. Default: 4')
               
     args = parser.parse_args()
 
@@ -498,85 +675,92 @@ if __name__ == "__main__":
     if not os.path.isdir(args.output_dir):
         os.mkdir(args.output_dir)
 
-    analyses = args.analysis.split(',')
+    # start the analysis pipeline
+    analyses = args.analysis.lower().split(',')
 
+    # for analysis other than 'substitution'
     for analysis in analyses:
-
-        analysis = analysis.lower()
         
         if analysis == 'substitution':
             continue
+            
+        # create sub-folder for specific type of analysis (canonical,frameshift, utr, lncrna, intron etc)
+        output_dir = args.output_dir +'/'+analysis         
+        if not os.path.isdir(output_dir):
+            os.mkdir(output_dir)
         
+        # generate custom proteome if not aligning to the canonical proteome
         path_to_custom_proteome = args.proteome
         if analysis != 'canonical':
             path_to_custom_proteome = generate_custom_proteome(analysis)
 
-        # create sub-folder for specific type of analysis (frameshift, utr, lncrna, intron etc)
-        output_dir = args.output_dir +'/'+analysis         
-        if not os.path.isdir(output_dir):
-            os.mkdir(output_dir)
-
-        # show parameters
+        # print to screen the parameters
+        print("=========================================")
         print("analysis         : "+analysis)
+        print("=========================================")
         print("- proteome       : "+path_to_custom_proteome)
+        print("- variant        : "+args.variant)
         print("- template xml   : "+args.template_xml_standard)
+        print("- thread         : "+str(args.thread))
         print("- output         : "+output_dir)
         print("- input          : "+args.input_dir)
         print("                   " + str(nSample) + " raw file(s)")
 
-        # run the analysis
-        maxquant_standard_search(path_to_custom_proteome,args.input_dir,output_dir,args.template_xml_standard)
+        # run maxquant
+        maxquant_standard_search(path_to_custom_proteome,args.input_dir,output_dir,args.template_xml_standard,args.thread)
         
         if analysis != 'canonical':
             npep = filter_maxquant_result(output_dir,args.proteome,args.variant)
         
-    if 'substitution' in args.analysis:
+    # substitution 
+    
+    if 'substitution' in args.analysis.lower():
         
         args.output_dir = args.output_dir +'/substitution'
-        
-        # create params.py
-        f = open("params.py", "w")
-        f.write("input_dir = '"+args.input_dir+"'\n")
-        f.write("output_dir = '"+args.output_dir+"'\n")
-        f.write("transcriptome = '"+args.transcriptome+"'\n")
-        f.write("path_to_variant_peptide = '"+args.variant+"'\n")
-        f.close()    
-        os.system('cat params.core >> params.py')
 
         print("Path to files:")
         print("- proteome          : "+args.proteome)
         print("- variant           : "+args.variant)
         print("- transcriptome     : "+args.transcriptome)
         print("- template xml      : "+args.template_xml_substitution)
+        print("- thread            : "+str(args.thread))
         print("- output            : "+args.output_dir)
         print("- input             : "+args.input_dir)
         print("                      " + str(nSample) + " raw file(s)")
 
+        # dependent peptide search by MaxQuant
         if os.path.isfile(args.output_dir+'/combined/txt/allPeptides.txt'):
             print("MaxQuant search results detected in the output folder "+args.output_dir)
             print("- to run MaxQuant again, please change output directory")
         else:
             print("Generate MaxQuant parameter file (xml)")
-            generate_xml(args.template_xml_substitution,args.input_dir,args.output_dir,args.proteome)
+            generate_xml(args.template_xml_substitution,args.input_dir,args.output_dir,args.proteome,args.thread)
             print("MaxQuant search of dependent peptides")
             cmd = MaxQuantCmd+ " " + args.output_dir + "/mqpar.xml"
             print('- '+cmd)
             os.system(cmd)
             print("Deleting intermediate files from MaxQuant run")
-            clean_up(args.input_dir,args.output_dir)
+            clean_up_after_maxquant_run(args.input_dir,args.output_dir)
+            
+        # identify potential substitutions
         if os.path.isfile(args.output_dir+'/subs.csv'):
             print("Substitution detection results found ")
             print("- to run again, please delete the file "+args.output_dir+'/subs.csv')
         else:
             print("Substitution detection and filtering")
-            import detect
-            import quantify
-            import plot
+            substitution_detection_and_filtering(args.input_dir,args.output_dir,args.transcriptome)
+            #import detect
+            #import quantify
+            #import plot
+            
+        # standard maxquant search to get intensity of substitutions
         print("Second pass")
-        substitution_second_pass(args.output_dir+'/subs.csv',args.input_dir,args.output_dir,args.template_xml_standard)
+        substitution_second_pass(args.output_dir+'/subs.csv',args.input_dir,args.output_dir,args.template_xml_standard,args.thread)
         print("Substitution quantification")
         substitution_quantification_with_2nd_pass(args.output_dir+'/subs.csv',args.output_dir+'/second_pass/combined/txt/evidence.txt',args.output_dir)
         print("Mark SNPs")
         variant_filter(args.output_dir+'/uniq_subs.csv',args.variant)
+        print("Plotting results")
+        plotting(args.output_dir)
 
         
