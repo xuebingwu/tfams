@@ -1,6 +1,6 @@
 discard/
 TODO
-*.fa
+#*.fa
 *.pickle
 push.sh
 # Byte-compiled / optimized / DLL files

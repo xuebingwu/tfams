@@ -27,6 +27,9 @@ variant='./reference/human.variant.fa'                 # peptides encoded by SNV
 # default of --transcriptome
 transcriptome='./reference/human.CDS.fa'               # for substitution, only CDS of mRNAs
 
+# default of --contaminant
+contaminant='./reference/contaminant.fa'               # for substitution, from MaxQuant
+
 # default for other transcriptomes used to generate noncanonical peptide databases 
 transcriptome_frameshift='./reference/human.CDS.fa'    # for frameshift analysis, same as substitution
 transcriptome_lncrna='./reference/human.lncRNA.fa'     # for lncRNA analysis, downloaded from GENCODE, lncRNA sequence
@@ -41,6 +44,7 @@ from Bio import SeqIO
 import time
 import pandas as pd
 import numpy as np
+import random
 
 
 # for plotting
@@ -135,6 +139,11 @@ def generate_lncRNA_or_intron_proteome(transcriptome,analysis):
     out.close()
     return 0
     
+def shuffle(seq):
+    str_var = list(seq)
+    random.shuffle(str_var)
+    return ''.join(str_var)
+
 def generate_frameshift_proteome(transcriptome):
     '''
     generate protein sequences in three reading frames
@@ -153,6 +162,7 @@ def generate_frameshift_proteome(transcriptome):
         return -1 # file not found
     out = open(transcriptome+'-frameshift-proteome.fa','w')
     out0 = open(transcriptome+'-proteome.fa','w')
+    out1 = open(transcriptome+'-frameshift-shuffle-proteome.fa','w')
     for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
         record.seq = record.seq.upper()   
         if '-' in record.seq or 'N' in record.seq:
@@ -161,16 +171,27 @@ def generate_frameshift_proteome(transcriptome):
             descriptions = record.description.split(' ')
             gene_symbol = descriptions[0]+'_'+descriptions[6].split(':')[1]+'_frameshift_1'
             description = 'en|'+gene_symbol+'|'
-            out.write('>'+description+'\n'+str(record.seq[1:].translate())+'\n')
+            seq = str(record.seq[1:].translate())
+            out.write('>'+description+'\n'+seq+'\n')
+            
+            # shuffled frame 1
+            out1.write('>'+description+'\n'+shuffle(seq)+'\n')
+            
             gene_symbol = descriptions[0]+'_'+descriptions[6].split(':')[1]+'_frameshift_2'
             description = 'en|'+gene_symbol+'|'
-            out.write('>'+description+'\n'+str(record.seq[2:].translate())+'\n')
+            
+            seq = str(record.seq[2:].translate())
+            out.write('>'+description+'\n'+seq+'\n')
+            # shuffled frame 2
+            out1.write('>'+description+'\n'+shuffle(seq)+'\n')
+            
             # generate non-frameshifted proteins
             gene_symbol = descriptions[0]+'_'+descriptions[6].split(':')[1]+'_frameshift_0'
             description = 'en|'+gene_symbol+'|'
             out0.write('>'+description+'\n'+str(record.seq.translate())+'\n')
     out.close()
     out0.close()
+    out1.close()
     return 0
         
 def generate_custom_proteome(analysis):
@@ -248,8 +269,9 @@ def filter_maxquant_result(output_dir,path_to_proteome,path_to_variant_peptide):
         print("0 peptides were identified in the MaxQuant search")
         
     pep = pep[pep['Potential contaminant'] != '+']
+    print(str(len(pep))+" peptides remain after removing potential contaminant")
     pep = pep[pep['Reverse'] != '+']
-    print(str(len(pep))+" peptides remain after removing potential contaminant and reverse match")
+    print(str(len(pep))+" peptides remain after removing reverse match")
         
     # remove peptides also found in canonical proteome
     # note that two sequences can be the same, so do not index using sequence
@@ -386,12 +408,19 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
     subs = pd.read_csv(path_to_subs)
     evidence2 = pd.read_csv(path_to_2nd_evidence,sep='\t')
     intensities = {}
+    min_PEP_intensity = {} # min PEP
+    min_PEP = {} # min PEP
     for i in evidence2.index:
         if evidence2.at[i,'Intensity'] > 0:
             seq = evidence2.at[i,'Sequence']
             if not (seq in intensities):
                 intensities[seq] = 0
+                min_PEP_intensity[seq] = 0
+                min_PEP[seq] = 1
             intensities[seq] += evidence2.at[i,'Intensity']
+            if evidence2.at[i,'PEP'] < min_PEP[seq]:
+                min_PEP[seq] = evidence2.at[i,'PEP']
+                min_PEP_intensity[seq] = evidence2.at[i,'Intensity']
     
     # calculate intensity ratio
     uniq_subs = pd.DataFrame([],columns=['modified_sequence',
@@ -399,6 +428,11 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                          'modified_intensity',
                                          'reference_intensity',
                                          'log10_mod_to_ref_intensity_ratio',
+                                         'modified_min_PEP',
+                                         'reference_min_PEP',
+                                         'modified_intensity_min_PEP',
+                                         'reference_intensity_min_PEP',
+                                         'log10_mod_to_ref_intensity_ratio_min_PEP',
                                          'codon',
                                          'destination',
                                          'origin',
@@ -418,6 +452,11 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                                           intensities[dpseq],
                                                           intensities[bpseq],
                                                           np.log10(intensities[dpseq]/intensities[bpseq]),
+                                                          min_PEP[dpseq],
+                                                          min_PEP[bpseq],
+                                                          min_PEP_intensity[dpseq],
+                                                          min_PEP_intensity[bpseq],
+                                                          np.log10(min_PEP_intensity[dpseq] / min_PEP_intensity[bpseq]),
                                                           subs.at[i,'codon'],
                                                           subs.at[i,'destination'],
                                                           subs.at[i,'origin'],
@@ -426,14 +465,189 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                                           subs.at[i,'protein']]], columns=uniq_subs.columns))
     uniq_subs.to_csv(os.path.join(output_dir,'uniq_subs.csv'))
     
-def variant_filter(path_to_uniq_subs,path_to_variant_peptide):
+def substitution_filter(path_to_uniq_subs,path_to_variant_peptide,path_to_proteome,path_to_contaminant):
     
+    '''
     if os.path.isfile(path_to_uniq_subs[:-4]+'-snv.csv'):
         print("- skip variant filter: results already found at: "+path_to_uniq_subs[:-4]+'-snv.csv')
         return 0
+    '''
         
     uniq_subs = pd.read_csv(path_to_uniq_subs)
+    print("- unique peptides identified: "+str(len(uniq_subs)))
+    
+    # remove peptides also found in canonical proteome
+    n=0
+    if os.path.isfile(path_to_proteome):
+        cont = open(path_to_proteome).read().replace("\n","")
+        for i in uniq_subs.index:
+            if uniq_subs.at[i,'modified_sequence'] in cont:
+                uniq_subs.drop(i)
+                n=n+1
+        print("- peptides discarded for matching canonical proteome: "+str(n))
+    else:
+        print("- skip proteome filter: file not found or not set: "+path_to_proteome)
+        
+    # remove peptides also found in potential contaminant sequence
+    uniq_subs['contaminant'] = 0
+    n=0
+    if os.path.isfile(path_to_contaminant):
+        cont = open(path_to_contaminant).read().replace("\n","")
+        for i in uniq_subs.index:
+            if uniq_subs.at[i,'modified_sequence'] in cont:
+                uniq_subs.at[i,'contaminant'] = 1
+                n=n+1
+        print("- peptides marked as potential contaminant: "+str(n))
+    else:
+        print("- skip contaminant filter: file not found or not set: "+path_to_contaminant)
 
+    # mark substitutions that have been observed before, in recombinant proteins (usually CHO cells) or native proteins in mammalian cells
+    # https://www.sciencedirect.com/science/article/pii/S073497501730126X?via%3Dihub
+    # recomb only: not found in native, but may be found in ecoli
+    # ecoli only: not found in recomb or native mammalian proteins, only in ecoli
+    known_substitutions  =                ['A to T',
+                                           'A to V', 
+                                           'D to G', # recomb only, # PTM
+                                           'D to E',                # PTM
+                                           'D to N',                # PTM
+                                           'E to K',
+                                           'F to I',
+                                           'F to L',
+                                           'G to D', # recomb only
+                                           'G to E',             # ecoli only
+                                           'G to R',             # ecoli only
+                                           'G to S',             # ecoli only
+                                           'H to Q',             # ecoli only
+                                           'H to Y',
+                                           'K to R', # recomb only
+                                           'L to F',
+                                           'L to K',              # ecoli only
+                                           'L to V',              # ecoli only
+                                           'M to I',
+                                           'M to L',
+                                           'M to T',
+                                           'N to K', # recomb only
+                                           'N to S', # recomb only
+                                           'P to I',            # ecoli only
+                                           'P to L',            # ecoli only
+                                           'P to S',              # ecoli only
+                                           'Q to H',              # ecoli only
+                                           'R to G', # recomb only
+                                           'R to K',
+                                           'R to Q',              # ecoli only 
+                                           'S to I', 
+                                           'S to L', 
+                                           'S to N', # recomb only
+                                           'S to R', # recomb only
+                                           'S to T',              # ecoli only
+                                           'T to S', # recomb only
+                                           'T to I',
+                                           'T to L',
+                                           'V to A', 
+                                           'V to I', 
+                                           'V to L', 
+                                           'V to M',              # ecoli only
+                                           'Y to F', # recomb only
+                                           'Y to H', # recomb only
+                                           'Y to N']              # ecoli] 
+    
+    recombinant_only_substitutions = [     'D to G', # recomb only
+                                           'G to D', # recomb only
+                                           'K to R', # recomb only
+                                           'N to K', # recomb only
+                                           'N to S', # recomb only
+                                           'R to G', # recomb only
+                                           'S to N', # recomb only
+                                           'S to R', # recomb only
+                                           'T to S', # recomb only
+                                           'Y to F', # recomb only
+                                           'Y to H'] # recomb only
+    
+    ecoli_only_substitutions = [           'G to E',             # ecoli only
+                                           'G to R',             # ecoli only
+                                           'G to S',             # ecoli only
+                                           'H to Q',             # ecoli only
+                                           'L to K',              # ecoli only
+                                           'L to V',              # ecoli only
+                                           'P to L',            # ecoli only
+                                           'P to I',            # ecoli only
+                                           'P to S',              # ecoli only
+                                           'Q to H',              # ecoli only
+                                           'R to Q',              # ecoli only 
+                                           'S to T',              # ecoli only
+                                           'V to M',              # ecoli only
+                                           'Y to N']              # ecoli only
+    # potential PTMs, ignoring positions
+    potential_PTMs = [  
+        'A to E',
+        'A to G',
+        'A to Q',
+        'A to S',
+        'D to A',
+        'D to G',
+        'D to E',
+        'D to H',
+        'D to N',
+        'E to A',
+        'E to D',
+        'E to Q',
+        'F to E',
+        'F to V',
+        'F to Y',
+        'G to A',
+        'G to D',
+        'G to N',
+        'H to N',
+        'I to V',
+        'I to N',
+        'I to Q',
+        'I to R',
+        'L to V',
+        'L to N',
+        'L to Q',
+        'L to R',
+        'K to R',
+        'K to W',
+        'M to S',
+        'N to G',
+        'N to P',
+        'P to E',
+        'P to Q',
+        'P to S',
+        'P to T',
+        'Q to A',
+        'Q to N',
+        'R to K',
+        'S to G',
+        'T to G',
+        'T to A',
+        'T to D',
+        'T to S',
+        'V to F',
+        'V to M',
+        'V to N',
+        'V to D',
+        'Y to D']
+    # 
+    uniq_subs['known_substitution'] = ''
+    uniq_subs['potential_PTM'] = ''
+    n_known = 0
+    n_ptm = 0
+    for i in uniq_subs.index:
+        subs = uniq_subs.at[i,'origin']+' to '+uniq_subs.at[i,'destination']
+        if subs in known_substitutions:
+            uniq_subs.at[i,'known_substitution'] = 'native'
+            n_known += 1
+            if subs in recombinant_only_substitutions:
+                uniq_subs.at[i,'known_substitution'] = 'recombinant_only'
+            elif subs in ecoli_only_substitutions:
+                uniq_subs.at[i,'known_substitution'] = 'ecoli_only'
+        if subs in potential_PTMs: 
+            uniq_subs.at[i,'potential_PTM'] = 'potential_PTM'
+            n_ptm += n_ptm
+    print("- marked as known substitution types: "+str(n_known))
+    print("- marked as potential PTM without position filter: "+str(n_ptm))
+    
     # SNPs
     uniq_subs['SNV'] = 0
     n=0
@@ -648,6 +862,9 @@ if __name__ == "__main__":
     parser.add_argument("--proteome", action='store',default=proteome,
                          help='Path to proteome fasta file')
     
+    parser.add_argument("--contaminant", action='store',default=contaminant,
+                         help='Path to contaminant fasta file')
+    
     parser.add_argument("--variant", action='store',default=variant,
                          help='Path to variant peptides created by SNV. To skip, set it NA')
 
@@ -722,6 +939,7 @@ if __name__ == "__main__":
         print("- proteome          : "+args.proteome)
         print("- variant           : "+args.variant)
         print("- transcriptome     : "+args.transcriptome)
+        print("- contaminant       : "+args.contaminant)
         print("- template xml      : "+args.template_xml_substitution)
         print("- thread            : "+str(args.thread))
         print("- output            : "+args.output_dir)
@@ -758,8 +976,8 @@ if __name__ == "__main__":
         substitution_second_pass(args.output_dir+'/subs.csv',args.input_dir,args.output_dir,args.template_xml_standard,args.thread)
         print("Substitution quantification")
         substitution_quantification_with_2nd_pass(args.output_dir+'/subs.csv',args.output_dir+'/second_pass/combined/txt/evidence.txt',args.output_dir)
-        print("Mark SNPs")
-        variant_filter(args.output_dir+'/uniq_subs.csv',args.variant)
+        print("Additional filters")
+        substitution_filter(args.output_dir+'/uniq_subs.csv',args.variant,args.proteome,args.contaminant)
         print("Plotting results")
         plotting(args.output_dir)
 
