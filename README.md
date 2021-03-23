@@ -1,7 +1,15 @@
 # TFAMS
 ## Translation Fidelity Analysis with Mass Spectrometry Data
 
-TFAMS is a pipeline for detecting translation errors from mass spectrometry data. Types of errors include: 1) amino acid substitutions likely caused by tRNA mispairing, 2) frameshifting, 3) translation in noncoding sequences, including 5' UTRs, 3' UTRs, introns, and long noncoding RNAs (lncRNAs). The amino acid substitution part is modified from scripts written by Ernest Mordret (https://github.com/ernestmordret/substitutions/).
+TFAMS is a pipeline for detecting translation errors from mass spectrometry data. Types of errors include: 
+
+- Amino acid substitutions (modified from [substitutions](https://github.com/ernestmordret/substitutions/))
+- Frameshifting
+- Translation in noncoding sequences
+  - 5' UTRs
+  - 3' UTRs
+  - introns
+  - long noncoding RNAs (lncRNAs).
 
 ## Requirement / setup
 

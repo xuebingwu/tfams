@@ -127,6 +127,7 @@ def extract_amino_acid_sequence_flanking_missense_variants(vep_missense_file,pro
     n_variant = 0      # total number of variants processed
     n_variant_protein_not_found = 0 # total number of variants skipped due to not-found protein
     n_variant_wrong_reference  = 0 # referene allele wrong
+    n_variant_no_sift = 0
     proteins_not_found = {}
     with open(input_file) as f:
         for line in f:
@@ -134,14 +135,22 @@ def extract_amino_acid_sequence_flanking_missense_variants(vep_missense_file,pro
             # get variant info: protein, position, and mutations
             flds = line.strip().split('\t')
             variant = flds[0]
-            protein = re.findall(r'ENSP=(.*);',line)[0]
-            gene = re.findall(r'SYMBOL=(.*);',line)[0]
+            protein = re.findall(r'ENSP=(.*?);',line)
+            gene = re.findall(r'SYMBOL=(.*?);',line)
+            # note that for NMD substrates there won't be SIFT, so no ; after ENSP ID. Ignore those
+            if (len(protein) == 0) or (len(gene) == 0):
+                n_variant_no_sift += 1
+                continue
+            else:
+                protein = protein[0]
+                gene = gene[0]
+            
             position = int(flds[9])-1
             source,dest = flds[10].split('/') # will there be more than 2 alleles
             SIFT = line.strip().split(';')[-1]
             
             # protein not found
-            if not protein in Seqs:
+            if not (protein in Seqs):
                 proteins_not_found[protein] = 1
                 n_variant_protein_not_found += 1
                 continue
@@ -151,16 +160,17 @@ def extract_amino_acid_sequence_flanking_missense_variants(vep_missense_file,pro
                 start = max(0,position-flanking_len)
                 end = position+flanking_len
                 seq = Seqs[protein][start:position]+dest+Seqs[protein][position+1:end]
-                out.write('>'+protein+'|'+variant+'|'+str(start)+'|'+source+'|'+dest+'|'+SIFT+'\n'+str(seq)+'\n')
+                out.write('>'+gene+'|'+protein+'|'+variant+'|'+str(start)+'|'+source+'|'+dest+'|'+SIFT+'\n'+str(seq)+'\n')
             else:
                 print("incorrect position/sequence for variant "+variant)
                 n_variant_wrong_reference += 1
     print(str(n_variant) + " missense variants processed")
     print(str(len(proteins_not_found)) + " proteins not found")
     print(str(n_variant_protein_not_found) + " variants in proteins not found")
+    print(str(n_variant_no_sift) + " variants without SIFT predictions discarded")
     if n_variant_wrong_reference>0:
         print(str(n_variant_wrong_reference) + " variants with wrong reference allele discarded ")
-    print(str(n_variant - n_variant_protein_not_found - n_variant_wrong_reference) + " variants saved in "+output_file)
+    print(str(n_variant - n_variant_protein_not_found - n_variant_wrong_reference - n_variant_no_sift) + " variants saved in "+output_file)
     
     # delete unzipped input file
     if input_file[-4:] == '.tmp':
