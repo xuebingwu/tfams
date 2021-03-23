@@ -105,17 +105,44 @@ def generate_UTR_proteome(transcriptome):
     out.close()
     return 0
     
-def generate_lncRNA_or_intron_proteome(transcriptome,analysis): 
+def generate_lncRNA_proteome(transcriptome,analysis): 
     '''
     input
-        - a fasta file containing sequences of all lncRNAs or introns
+        - a fasta file containing sequences of all lncRNAs
         - lncRNA: downloaded from GENCODE, sequences of all lncRNAs
         - lncRNA header: >ENST00000326734.2|ENSG00000177757.2|OTTHUMG00000002471.2|OTTHUMT00000007025.2|FAM87B-201|FAM87B|1947|
-        - intron: downloaded from UCSC Table browser, with 9nt flanking sequence, by chromosome and then merged together
     output
         - a fasta files for proteins encoded in each reading frame, regardless of start or stop codons
         - output in the same folder as input, file name: *-lncrna-proteome.fa or *-intron-proteome.fa
         - header for lncRNA: >en|ENST00000326734.2_FAM87B_lncrna_0 
+    '''
+    if not os.path.isfile(transcriptome):
+        return -1 # file not found
+    
+    out = open(transcriptome+'-'+analysis+'-proteome.fa','w')
+
+    for record in SeqIO.parse(open(transcriptome,'r'),'fasta'):
+        record.seq = record.seq.upper()
+        if '-' in record.seq or 'N' in record.seq:
+            continue
+        descriptions = record.description.split('|')
+        description = '>en|'+descriptions[0]+'_'+descriptions[5]+'_lncrna_'
+        out.write(description+'0|\n'+str(record.seq[0:].translate())+'\n')
+        out.write(description+'1|\n'+str(record.seq[1:].translate())+'\n')
+        out.write(description+'2|\n'+str(record.seq[2:].translate())+'\n')
+    out.close()
+    return 0
+
+def generate_intron_proteome(transcriptome,analysis): 
+    '''
+    given introns are huge, stop at the first stop codon for each frame
+    
+    input
+        - a fasta file containing sequences of all introns
+        - intron: downloaded from UCSC Table browser, with 9nt flanking sequence, by chromosome and then merged together
+    output
+        - a fasta files for proteins encoded in each reading frame, regardless of start or stop codons
+        - output in the same folder as input, file name: *-intron-proteome.fa
         - header for itnron: >en|ENST00000326734.2_range=chr1:65565-69045_intron_0
     '''
     if not os.path.isfile(transcriptome):
@@ -127,15 +154,18 @@ def generate_lncRNA_or_intron_proteome(transcriptome,analysis):
         record.seq = record.seq.upper()
         if '-' in record.seq or 'N' in record.seq:
             continue
-        if analysis == 'lncrna': # >ENST00000326734.2|ENSG00000177757.2|OTTHUMG00000002471.2|OTTHUMT00000007025.2|FAM87B-201|FAM87B|1947|
-            descriptions = record.description.split('|')
-            description = '>en|'+descriptions[0]+'_'+descriptions[5]+'_lncrna_'
-        else:# >hg38_wgEncodeGencodeCompV36_ENST00000641515.2_1 range=chr1:65565-69045 5'pad=9 3'pad=9 strand=+ repeatMasking=none
-            descriptions = record.description.split(' ')
-            description = '>en|'+descriptions[0].split('_')[2]+'_'+descriptions[1]+'_intron_'    
-        out.write(description+'0|\n'+str(record.seq[0:].translate())+'\n')
-        out.write(description+'1|\n'+str(record.seq[1:].translate())+'\n')
-        out.write(description+'2|\n'+str(record.seq[2:].translate())+'\n')
+        # >hg38_wgEncodeGencodeCompV36_ENST00000641515.2_1 range=chr1:65565-69045 5'pad=9 3'pad=9 strand=+ repeatMasking=none
+        descriptions = record.description.split(' ')
+        description = '>en|'+descriptions[0].split('_')[2]+'_'+descriptions[1]+'_intron_' 
+        seq = str(record.seq[0:].translate().split('*')[0])
+        if len(seq) > 6:
+            out.write(description+'0|\n'+seq+'\n')
+        seq = str(record.seq[1:].translate().split('*')[0])
+        if len(seq) > 6:
+            out.write(description+'1|\n'+seq+'\n')
+        seq = str(record.seq[2:].translate().split('*')[0])
+        if len(seq) > 6:
+            out.write(description+'2|\n'+seq+'\n')
     out.close()
     return 0
     
@@ -200,13 +230,13 @@ def generate_custom_proteome(analysis):
     if analysis == 'lncrna':
         path_to_custom_proteome = transcriptome_lncrna+'-lncrna-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            generate_lncRNA_or_intron_proteome(transcriptome_lncrna,'lncrna') 
+            generate_lncRNA_proteome(transcriptome_lncrna,'lncrna') 
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     elif analysis == 'intron':
         path_to_custom_proteome = transcriptome_intron+'-intron-proteome.fa'
         if not os.path.isfile(path_to_custom_proteome):
-            generate_lncRNA_or_intron_proteome(transcriptome_intron,'intron') 
+            generate_intron_proteome(transcriptome_intron,'intron') 
         else:
             print('Custom proteome already exists. Please delete it to create a new one: '+path_to_custom_proteome)
     elif analysis == 'utr':
@@ -644,7 +674,7 @@ def substitution_filter(path_to_uniq_subs,path_to_variant_peptide,path_to_proteo
                 uniq_subs.at[i,'known_substitution'] = 'ecoli_only'
         if subs in potential_PTMs: 
             uniq_subs.at[i,'potential_PTM'] = 'potential_PTM'
-            n_ptm += n_ptm
+            n_ptm += 1
     print("- marked as known substitution types: "+str(n_known))
     print("- marked as potential PTM without position filter: "+str(n_ptm))
     
@@ -669,8 +699,7 @@ def plotting(output_dir):
     uniq_subs = pd.read_csv(output_dir+'/uniq_subs-snv.csv')
     plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio,nbin,alpha=.3,label='All,'+str(len(uniq_subs)))
     plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.mispairing==1],nbin,alpha=.3,label='near-cognate,'+str(sum(uniq_subs.mispairing==1)))
-    if 'SNV' in uniq_subs.columns:
-        plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.SNV==1],nbin,alpha=.3,label='SNV,'+str(sum(uniq_subs.SNV==1)))
+    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.SNV==1],nbin,alpha=.3,label='SNV,'+str(sum(uniq_subs.SNV==1)))
     plt.legend()
     plt.savefig(output_dir+'/uniq-subs-intensity-ratio-hist.pdf')  
     
