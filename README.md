@@ -1,10 +1,12 @@
 # TFAMS
 ## Translation Fidelity Analysis with Mass Spectrometry Data
 
-TFAMS is a pipeline for detecting translation errors from mass spectrometry data. Types of errors include: 
+TFAMS is a pipeline for detecting noncanonical peptides from mass spectrometry data, including: 
 
 - Amino acid substitutions (modified from [substitutions](https://github.com/ernestmordret/substitutions/))
-- Frameshifting
+  - translation errors: tRNA mispairing or mischarging
+  - heterozygous SNPs
+- Frameshift
 - Translation in noncoding sequences
   - 5' UTRs
   - 3' UTRs
@@ -52,20 +54,23 @@ transcriptome_intron='./reference/human.intron.fa'     # for intron analysis, do
 ```
 
 #### Template parameter file (xml) for MaxQuant (provided)
-Template xml files with MaxQuant parameters are provided in the folder `./template_xml`. Typically there is no need to change these files. The path to the default xml files can be edited in the script `tfams.py`:
+Template xml files with MaxQuant parameters are provided in the folder `./template_xml`.
+
+The path to the default xml files can be edited in the script `tfams.py`:
 
 ```python
 # default of --standard-xml
-template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters, no dependent peptide search
+template_xml_standard='./template_xml/mqpar-standard.xml'         # Standard MaxQuant search parameters for label-free data, no dependent peptide search
 
 # default of --substitution-xml
 template_xml_substitution='./template_xml/mqpar-substitution.xml' # MaxQuant parameters with dependent peptide search and match between runs
 ```
 
+**NOTE**: Currently only label-free MS data is supported for substitution ananlysis. For other types of analysis, please provide the xml file using the --standard-xml option.
 
 #### SNP peptides (optional)
 
-Heterozygous SNPs can lead to variant peptides that will be called substitutions. To mark/remove those SNP peptides, we search against a list of variant peptides encoded by SNPs. See the script `variant.py` for how to generate such a file. Once generated, please update the default path in the script `tfams.py`:
+Heterozygous SNPs can lead to variant peptides that will be called substitutions. To mark/remove those SNP peptides, we search against a list of variant peptides encoded by SNPs. See the script `variant.py` for how to generate such a file from a VCF file. Once generated, please update the default path in the script `tfams.py`:
 
 ```python
 # default of --variant
@@ -95,9 +100,9 @@ python tfams.py raw_file_folder --analysis substitution
 ## Detailed usage:
 
 ```
-usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME]
-                [--proteome PROTEOME] [--variant VARIANT] [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
-                [--standard-xml TEMPLATE_XML_STANDARD]
+usage: tfams.py [-h] [--analysis ANALYSIS] [--output-dir OUTPUT_DIR] [--transcriptome TRANSCRIPTOME] [--proteome PROTEOME]
+                [--contaminant CONTAMINANT] [--variant VARIANT] [--substitution-xml TEMPLATE_XML_SUBSTITUTION]
+                [--standard-xml TEMPLATE_XML_STANDARD] [--thread THREAD]
                 input_dir
 
 positional arguments:
@@ -105,16 +110,19 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-  --analysis ANALYSIS   combination of canonical, frameshift, utr, lncrna, intron, and substitution
-                        separated by comma (no space). Default: canonical
+  --analysis ANALYSIS   combination of canonical, frameshift, utr, lncrna, intron, and substitution separated by comma (no space). Default:
+                        canonical
   --output-dir OUTPUT_DIR
                         Output folder name. Default: same as input
   --transcriptome TRANSCRIPTOME
                         Path to transcriptome fasta file. See README for details
   --proteome PROTEOME   Path to proteome fasta file
-  --variant VARIANT     Path to variant peptides caused by SNV
+  --contaminant CONTAMINANT
+                        Path to contaminant fasta file
+  --variant VARIANT     Path to variant peptides created by SNV. To skip, set it NA
   --substitution-xml TEMPLATE_XML_SUBSTITUTION
                         A template xml file for substitution detection
   --standard-xml TEMPLATE_XML_STANDARD
                         A template xml file for standard MaxQuant search
+  --thread THREAD       Number fo threads for MaxQuant. Default: 4
 ``` 
