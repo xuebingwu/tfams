@@ -29,6 +29,10 @@ def valid_raw_folder(raw_dir):
         for file in files:
             if file[-4:] == ".raw":
                 nSample = nSample + 1
+            elif file[-4:] == ".RAW":
+                file_new = file.replace('.RAW','.raw')
+                print(" - renaming RAW to raw: "+file+' to '+file_new)
+                os.rename(file,file_new)
         if nSample == 0:
             print("WARNING: no *.raw files found in the input folder "+raw_dir,file=sys.stderr)
     else:

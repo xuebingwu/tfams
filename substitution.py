@@ -107,14 +107,16 @@ def find_substitution_position_local(modified_seq, protein,record_dict):
     returns the position of a substitutions relative to the start
     of the protein sequence
     """
-    possible_sites = re.findall('\(([^\)]+)\)', modified_seq)
-    best_site = np.argmax([float(i) for i in possible_sites])
-    modified_pos_prime = [m.start()-1 for m in re.finditer('\(',modified_seq) ][best_site]
-    modified_pos = len(re.sub('\(([^\)]+)\)', '', modified_seq[:modified_pos_prime]))
-    base_seq = re.sub('\(([^\)]+)\)', '', modified_seq)
-    s = record_dict[protein].seq
-    seq_i = s.translate().find(base_seq)
-    i = seq_i + modified_pos
+    i = np.nan
+    if protein in record_dict:
+        possible_sites = re.findall('\(([^\)]+)\)', modified_seq)
+        best_site = np.argmax([float(i) for i in possible_sites])
+        modified_pos_prime = [m.start()-1 for m in re.finditer('\(',modified_seq) ][best_site]
+        modified_pos = len(re.sub('\(([^\)]+)\)', '', modified_seq[:modified_pos_prime]))
+        base_seq = re.sub('\(([^\)]+)\)', '', modified_seq)
+        s = record_dict[protein].seq
+        seq_i = s.translate().find(base_seq)
+        i = seq_i + modified_pos
     return i
 
 def find_positions_local(modified_seq, proteins,record_dict):
@@ -124,18 +126,35 @@ def find_positions_local(modified_seq, proteins,record_dict):
     """
     positions = []
     for prot in proteins.split(" "):
-        positions.append(str(find_substitution_position_local(modified_seq, prot,record_dict)))
+        if prot in record_dict:
+            positions.append(str(find_substitution_position_local(modified_seq, prot,record_dict)))
     return " ".join(positions)
 
-def is_gene(record):
-    if len(record.seq)%3 != 0:
-        return False
-    if not record.seq[:3] in {'ATG','GTG','TTG','ATT','CTG'}:
-        return False
-    if record.seq[-3:].translate()!='*':
-        return False
-    return True
+# note that this filter was used in the original ecoli/yeast paper
+# however it removes half of the subs coming from immunoglobulin locus where there is no start codons
+def coding_status_from_sequence(seq):
+    status = []
+    if len(seq)%3 != 0:
+        status.append('non-triplets')
+    if seq[:3] != 'ATG':
+        if seq[:3] in {'GTG','TTG','ATT','CTG'}:
+            status.append('alternative-start-codon')
+        else:
+            status.append('no-start-codon')
+    if not (seq[-3:] in {'TAA','TAG','TGA'}):
+        status.append('no-stop-codon')
+    if len(status) > 0:
+        status = ','.join(status)
+    else:
+        status = 'normal'
+    return status
 
+def coding_status(proteins,record_dict):
+    status = []
+    for protein in proteins.split(' '):
+        if protein in record_dict:
+            status.append(coding_status_from_sequence(str(record_dict[protein].seq)))
+    return ';'.join(status)
 
 def refine_localization_probabilities(modified_seq, threshold = 0.05):
     """
@@ -348,6 +367,18 @@ def create_modified_seq(modified_seq, destination):
     base_seq = re.sub('\(([^\)]+)\)', '', modified_seq)
     return base_seq[: modified_pos] + destination + base_seq[modified_pos + 1 :]
 
+# xw
+def find_longest_protein(proteins,record_dict):
+    max_len = 0
+    longest_protein = ''
+    for protein in proteins.split(' '):
+        if protein in record_dict:
+            L = int(len(record_dict[protein].seq)/3)
+            if L > max_len:
+                max_len = L
+                longest_protein = protein
+    return longest_protein
+
 '''
 def calculate_error_rate(path_to_evidence,path_to_allPeptides,subs):
     ep = pd.read_csv(path_to_evidence, sep='\t')
@@ -466,27 +497,25 @@ def substitution_detection_and_filtering(input_dir,output_dir,transcriptome):
         W_codons = []
         for record in SeqIO.parse(open(transcriptome,'rU'),'fasta'):
             record.seq = record.seq.upper()    
-            if is_gene(record): # has start/stop
-                # xw
-                #translation = unicode(record.seq.translate())
-                translation = str(record.seq.translate())
-                bits = record.description.split(' ')
-                record.name = bits[0] #xw, use ENST so that no two records are the same
-                #for i in bits:
-                #    if 'gene_symbol' in i:
-                #        record.name = i.split(':')[-1]
-                if record.name in translation_dict:        # if multiple isoforms, keep the longer one
-                    if len(translation) > len(translation_dict[record.name]):
-                        translation_dict[record.name] = translation
-                        # note that we didn't change the lists: translated_record_list
-                else:
-                    names_list.append(record.name)
-                    record_list.append(record)
-                    translated_record_list.append(translation)
+            
+            translation = str(record.seq.translate())
+            bits = record.description.split(' ')
+            record.name = bits[0] #xw, use ENST so that no two records are the same
+            #for i in bits:
+            #    if 'gene_symbol' in i:
+            #        record.name = i.split(':')[-1]
+            if record.name in translation_dict:        # if multiple isoforms, keep the longer one
+                if len(translation) > len(translation_dict[record.name]):
                     translation_dict[record.name] = translation
-                    record_dict[record.name] = record
-                    boundaries_aa.append(boundaries_aa[-1]+len(translation))
-                    W_codons.extend(list(codonify(record.seq)))
+                    # note that we didn't change the lists: translated_record_list
+            else:
+                names_list.append(record.name)
+                record_list.append(record)
+                translated_record_list.append(translation)
+                translation_dict[record.name] = translation
+                record_dict[record.name] = record
+                boundaries_aa.append(boundaries_aa[-1]+len(translation))
+                W_codons.extend(list(codonify(record.seq)))
 
         print(" - number of ORFs: "+str(len(translation_dict)))
 
@@ -580,8 +609,12 @@ def substitution_detection_and_filtering(input_dir,output_dir,transcriptome):
     #%%
     subs = dp[dp['substitution']!=False].copy()
     subs['proteins'] = subs['DP Base Sequence'].map(lambda base_seq: find_proteins(base_seq,boundaries_aa,sa,W_aa,names_list))
-    subs['protein'] = subs['proteins'].map(lambda x: x.split(' ')[0] if len(x)>0 else float('NaN'))
-    subs = subs[pd.notnull(subs['protein'])] #mismatching files?
+    subs['coding_status'] = subs['proteins'].map(lambda proteins: coding_status(proteins,record_dict))
+    subs['longest_protein'] = subs['proteins'].map(lambda proteins: find_longest_protein(proteins,record_dict))
+    subs['protein_length'] = subs['longest_protein'].map(lambda protein: int(len(record_dict[protein].seq)/3) if protein in record_dict else np.nan)
+    subs['longest_protein_status'] = subs['longest_protein'].map(lambda protein: coding_status(protein,record_dict))
+                          
+    #subs = subs[pd.notnull(subs['protein'])] #mismatching files?
 
     subs['codons'] = float('NaN')
     subs.loc[ subs['DP Positional Probability'] > positional_probability_cutoff, 'codons' ] = subs[ subs['DP Positional Probability'] > positional_probability_cutoff ]['DP Probabilities'].map(lambda modified_seq: fetch_best_codons(modified_seq,boundaries_aa,sa,W_aa,names_list,record_dict))
@@ -596,17 +629,13 @@ def substitution_detection_and_filtering(input_dir,output_dir,transcriptome):
         print("empty!! exit")
         exit(1)
 
-    # for each row
-    #for i in range(subs.shape[0]):
-    #    print(i)
-    #    subs.iloc[i]['mispairing'] = is_mispairing(subs.iloc[i])
-
-
-    subs['positions'] = subs.apply(lambda row : 
+    subs['positions'] = subs.apply(lambda row: 
             find_positions_local(row['DP Probabilities'],row['proteins'],record_dict),
             axis=1)
 
-    subs['position'] = subs['positions'].map(lambda x: int(x.split(' ')[0]) if len(set(x.split(' ')))==1 else float('NaN'))
+    subs['position'] = subs.apply(lambda row: find_substitution_position_local(row['DP Probabilities'], row['longest_protein'],record_dict), axis=1)
+    subs['position_relative'] = subs.apply(lambda row: row['position']/row['protein_length'], axis=1)
+    
     subs['modified_sequence'] = subs.apply(lambda row : create_modified_seq(row['DP Probabilities'], row['destination']), axis=1)
     subs['modified_sequence'] = subs['modified_sequence'].map(lambda x: x.replace('I','L'))
     subs = subs[subs['modified_sequence'].map(lambda x: find_homologous_peptide(x,W_aa_ambiguous,sa_ambiguous))]

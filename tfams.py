@@ -309,7 +309,7 @@ def filter_maxquant_result(output_dir,path_to_proteome,path_to_variant_peptide):
     for i in pep.index:
         #print(pep.at[i,'Sequence'])
         if pep.at[i,'Sequence'] in allpep:
-            pep=pep.drop(i)
+            pep=pep.drop(i,inplace=True)
     print(str(len(pep))+" peptides remain after removing canonical peptides")
     
     pep = pep[~pep['Intensity'].isna()]
@@ -440,6 +440,8 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
     intensities = {}
     min_PEP_intensity = {} # min PEP
     min_PEP = {} # min PEP
+    
+    # add up the intensity values for the same peptides
     for i in evidence2.index:
         if evidence2.at[i,'Intensity'] > 0:
             seq = evidence2.at[i,'Sequence']
@@ -463,13 +465,19 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                          'modified_intensity_min_PEP',
                                          'reference_intensity_min_PEP',
                                          'log10_mod_to_ref_intensity_ratio_min_PEP',
+                                         'longest_protein',
+                                         'protein_length',
+                                         'longest_protein_status',
                                          'codon',
                                          'destination',
                                          'origin',
                                          'mispairing',
-                                         'position',
-                                         'protein'])
-        
+                                         'positions',
+                                         'proteins',
+                                         'coding_status',
+                                         'Retention time',
+                                         'DP Time Difference'])
+            
     computed=[]
     for i in subs.index:
         dpseq = subs.at[i,'modified_sequence']
@@ -487,24 +495,35 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                                           min_PEP_intensity[dpseq],
                                                           min_PEP_intensity[bpseq],
                                                           np.log10(min_PEP_intensity[dpseq] / min_PEP_intensity[bpseq]),
+                                                          subs.at[i,'longest_protein'],
+                                                          subs.at[i,'protein_length'],
+                                                          subs.at[i,'longest_protein_status'],
                                                           subs.at[i,'codon'],
                                                           subs.at[i,'destination'],
                                                           subs.at[i,'origin'],
                                                           subs.at[i,'mispairing'],
-                                                          subs.at[i,'position'],
-                                                          subs.at[i,'protein']]], columns=uniq_subs.columns))
+                                                          subs.at[i,'positions'],
+                                                          subs.at[i,'proteins'],
+                                                          subs.at[i,'coding_status'],
+                                                          subs.at[i,'Retention time'],
+                                                          subs.at[i,'DP Time Difference']
+                                                         ]], columns=uniq_subs.columns))
     uniq_subs.to_csv(os.path.join(output_dir,'uniq_subs.csv'))
     
 def substitution_filter(path_to_uniq_subs,path_to_variant_peptide,path_to_proteome,path_to_contaminant):
     
     '''
-    if os.path.isfile(path_to_uniq_subs[:-4]+'-snv.csv'):
-        print("- skip variant filter: results already found at: "+path_to_uniq_subs[:-4]+'-snv.csv')
+    if os.path.isfile(path_to_uniq_subs[:-4]+'-filtered.csv'):
+        print("- skip variant filter: results already found at: "+path_to_uniq_subs[:-4]+'-filtered.csv')
         return 0
     '''
         
     uniq_subs = pd.read_csv(path_to_uniq_subs)
     print("- unique peptides identified: "+str(len(uniq_subs)))
+    
+    # remove peptides whose base peptides cannot be mapped to the proteome, mostly trypsin peptides
+    uniq_subs = uniq_subs[pd.notnull(uniq_subs['proteins'])]
+    print("- after removing those with base peptides cannot be mapped to the proteome : "+str(len(uniq_subs)))
     
     # remove peptides also found in canonical proteome
     n=0
@@ -512,25 +531,28 @@ def substitution_filter(path_to_uniq_subs,path_to_variant_peptide,path_to_proteo
         cont = open(path_to_proteome).read().replace("\n","")
         for i in uniq_subs.index:
             if uniq_subs.at[i,'modified_sequence'] in cont:
-                uniq_subs.drop(i)
+                uniq_subs.drop(i,inplace=True)
                 n=n+1
         print("- peptides discarded for matching canonical proteome: "+str(n))
     else:
         print("- skip proteome filter: file not found or not set: "+path_to_proteome)
         
     # remove peptides also found in potential contaminant sequence
-    uniq_subs['contaminant'] = 0
+    #uniq_subs['contaminant'] = 0
     n=0
     if os.path.isfile(path_to_contaminant):
         cont = open(path_to_contaminant).read().replace("\n","")
         for i in uniq_subs.index:
             if uniq_subs.at[i,'modified_sequence'] in cont:
-                uniq_subs.at[i,'contaminant'] = 1
+                #uniq_subs.at[i,'contaminant'] = 1
+                uniq_subs.drop(i,inplace=True)
                 n=n+1
-        print("- peptides marked as potential contaminant: "+str(n))
+        print("- peptides discarded as potential contaminant: "+str(n))
     else:
         print("- skip contaminant filter: file not found or not set: "+path_to_contaminant)
 
+    print("- likely antibody sequences: "+str(sum(uniq_subs['longest_protein_status'] != 'normal')))
+    
     # mark substitutions that have been observed before, in recombinant proteins (usually CHO cells) or native proteins in mammalian cells
     # https://www.sciencedirect.com/science/article/pii/S073497501730126X?via%3Dihub
     # recomb only: not found in native, but may be found in ecoli
@@ -690,26 +712,42 @@ def substitution_filter(path_to_uniq_subs,path_to_variant_peptide,path_to_proteo
         print("- peptides marked as potential SNP peptides: "+str(n))
     else:
         print("- skip variant filter: variant peptide file not found or not set: "+path_to_variant_peptide)
-    uniq_subs.to_csv(path_to_uniq_subs[:-4]+'-snv.csv')
+    uniq_subs.to_csv(path_to_uniq_subs[:-4]+'-filtered.csv')
         
 def plotting(output_dir):
     
+    uniq_subs = pd.read_csv(output_dir+'/uniq_subs-filtered.csv')
+
     # histogram of error rate
     nbin = 30
-    uniq_subs = pd.read_csv(output_dir+'/uniq_subs-snv.csv')
-    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio,nbin,alpha=.3,label='All,'+str(len(uniq_subs)))
-    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.mispairing==1],nbin,alpha=.3,label='near-cognate,'+str(sum(uniq_subs.mispairing==1)))
-    plt.hist(uniq_subs.log10_mod_to_ref_intensity_ratio[uniq_subs.SNV==1],nbin,alpha=.3,label='SNV,'+str(sum(uniq_subs.SNV==1)))
-    plt.legend()
+    
+    fig, axs = plt.subplots(2, 1, sharex=True, sharey=True, tight_layout=True)
+    d = uniq_subs[uniq_subs.longest_protein_status == 'normal']
+    _, bins, _ = axs[0].hist(d.log10_mod_to_ref_intensity_ratio,nbin,alpha=.3,label='Normal,'+str(len(d)))
+    axs[0].hist(d.log10_mod_to_ref_intensity_ratio[d.mispairing==1],bins=bins,alpha=.3,label='near-cognate,'+str(sum(d.mispairing==1)))
+    axs[0].hist(d.log10_mod_to_ref_intensity_ratio[d.SNV==1],bins=bins,alpha=.3,label='SNV,'+str(sum(d.SNV==1)))
+    axs[0].legend()
+    
+    # antibody
+    d = uniq_subs[uniq_subs.longest_protein_status != 'normal']
+    axs[1].hist(d.log10_mod_to_ref_intensity_ratio,bins=bins,alpha=.3,label='Antibody,'+str(len(d)))
+    axs[1].hist(d.log10_mod_to_ref_intensity_ratio[d.mispairing==1],bins=bins,alpha=.3,label='near-cognate,'+str(sum(d.mispairing==1)))
+    axs[1].hist(d.log10_mod_to_ref_intensity_ratio[d.SNV==1],bins=bins,alpha=.3,label='SNV,'+str(sum(d.SNV==1)))
+    axs[1].legend()
     plt.savefig(output_dir+'/uniq-subs-intensity-ratio-hist.pdf')  
     
+    # other plots only look at non SNPs, with log10_mod_to_ref_intensity_ratio < -1
+    # in aggregate plots, can use SNPs as background to see bias in positions like 3rd codon position GU wobble pair?
+    d = uniq_subs[uniq_subs.log10_mod_to_ref_intensity_ratio < -1]
+    
     # plot aa to aa heatmap
-    aa2aa = aa_to_aa_count_matrix(uniq_subs)
+    aa2aa = aa_to_aa_count_matrix(d)
     plot_matrix(np.log2(aa2aa+1),output_dir+'/uniq-subs-aa2aa-log-heatmap.pdf',10)
     aa2aa.to_csv(output_dir+'/uniq-subs-aa2aa-matrix.csv', header=True, index=True, float_format='%d')
 
     # plot codon to aa heatmap
-    codon2aa = codon_to_aa_count_matrix(uniq_subs)
+    d = uniq_subs[uniq_subs.log10_mod_to_ref_intensity_ratio < -1]
+    codon2aa = codon_to_aa_count_matrix(d)
     #codon2aa = codon_to_aa_count_matrix(uniq_subs,'','') # do not mask stop codons or PTMs
     #codon2aa = codon_to_aa_count_matrix(uniq_subs,'mask stop codons','mask PTM') # do not mask stop codons or PTMs
     #codon2aa = codon_to_aa_count_matrix(uniq_subs,'delete stop codons','mask PTM') # do not mask stop codons or PTMs
@@ -717,6 +755,11 @@ def plotting(output_dir):
     plot_matrix(np.log2(codon2aa+1),output_dir+'/uniq-subs-codon2aa-log-heatmap.pdf')
     codon2aa.to_csv(output_dir+'/uniq-subs-codon2aa-matrix.csv', header=True, index=True, float_format='%d')
     
+    # plot codon to aa heatmap, mispairing only
+    d = uniq_subs[uniq_subs.log10_mod_to_ref_intensity_ratio < -1]
+    codon2aa = codon_to_aa_count_matrix(d[d['mispairing']==1])
+    plot_matrix(np.log2(codon2aa+1),output_dir+'/uniq-subs-codon2aa-mispairing-only-log-heatmap.pdf')
+    codon2aa.to_csv(output_dir+'/uniq-subs-codon2aa-mispairing-only-matrix.csv', header=True, index=True, float_format='%d')
 
 def plot_matrix(m,filename,fontsize=5):
     fig, ax = plt.subplots()
@@ -769,13 +812,17 @@ def codon_to_aa_count_matrix(uniq_subs):
     uniq_subs = uniq_subs[pd.notnull(uniq_subs['codon'])]
     uniq_subs['codon'] = uniq_subs['codon'].map(lambda x: x.replace('T','U'))
     counts = uniq_subs[['codon','destination','origin']].groupby(['codon','destination']).count()	
+    #print(counts.index)
 
     bases = 'UCAG'
     codons = [a+b+c for a in bases for b in bases for c in bases]
     matrix = pd.DataFrame(data = 0, index = codons, columns=list('ACDEFGHKLMNPQRSTVWY'),dtype=float)
     
+    
     for codon,destination in counts.index:
         matrix.loc[codon,destination] = counts.origin[codon][destination]
+    
+    #print(matrix.index)
     
     # the following code will gray out stop codons or delete them
     for label in matrix.index:
@@ -809,13 +856,19 @@ def codon_to_aa_count_matrix(uniq_subs):
 
 
     ## the following code will gray out potential PTM substitutions
+    #print(matrix.index)
     for label in matrix.index:
         for col in matrix.columns:
             if (label in inverted_codon_table[col]) or (codon_table[label] +' to '+col in exact_PTM_spec_list):
                 matrix.loc[label, col] = 0#float('NaN')
     
     matrix.rename(columns={"L": "I\nL"},inplace=True)
-
+    
+    # add aa to codons as row name
+    for label in matrix.index:
+        matrix.at[label,'new-index'] = label+'-'+codon_table[label]
+    matrix.set_index('new-index',inplace=True)
+    
     return matrix
 
 def aa_to_aa_count_matrix(uniq_subs):
@@ -847,6 +900,21 @@ def aa_to_aa_count_matrix(uniq_subs):
                 
     return matrix
 
+def merge(folder):
+    # merge the uniq_subs file from multiple samples
+    data = []
+    for f in os.scandir(folder):
+        if f.is_dir():
+            sample = f.name
+            if os.path.isfile(folder+'/'+sample+'/substitution/uniq_subs-filtered.csv'):
+                uniq_subs = pd.read_csv(folder+'/'+sample+'/substitution/uniq_subs-filtered.csv')
+                uniq_subs['sample'] = sample
+                data.append(uniq_subs)
+                print(sample)
+    alldata = pd.concat(data)
+    alldata.to_csv(folder+'/uniq_subs-filtered.csv')
+    plotting(folder)
+
 # NOT USED!!! slows the analysis by a lot
 def parse_fragments(header,translation,min_pep_len):
     '''
@@ -877,7 +945,7 @@ if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('input_dir',help='Required. Path to a folder with raw data (*.raw)')
+    parser.add_argument('input_dir',help='Required. Path to a folder with raw data (*.raw) (exception: see --merge)')
 
     parser.add_argument("--analysis", dest='analysis', action='store',default='canonical',
                          help='combination of canonical, frameshift, utr, lncrna, intron, and substitution separated by comma (no space). Default: canonical')
@@ -905,8 +973,15 @@ if __name__ == "__main__":
     
     parser.add_argument("--thread", dest='thread', action='store',default=4,type=int,
                          help='Number fo threads for MaxQuant. Default: 4')
+    
+    parser.add_argument("--merge", action='store_true',
+                         help='merge output from multiple substitution analysis. Each folder under input dir is one sample')
               
     args = parser.parse_args()
+    
+    if args.merge:
+        merge(args.input_dir)
+        exit(0)
 
     # check the number of *.raw files in the input folder
     args.input_dir = os.path.abspath(args.input_dir)

@@ -1,4 +1,5 @@
 # generate a fasta file for variant peptides encoded by SNPs
+# the output will be used to filter peptides
 
 # example usage using dbSNP as input
 
