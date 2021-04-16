@@ -307,9 +307,13 @@ def filter_maxquant_result(output_dir,path_to_proteome,path_to_variant_peptide):
     # note that two sequences can be the same, so do not index using sequence
     allpep = open(path_to_proteome).read().replace("\n","")
     for i in pep.index:
-        #print(pep.at[i,'Sequence'])
+        if pep is None:
+            print("0 peptides remain after removing canonical peptides")
+            return 0
+            break
         if pep.at[i,'Sequence'] in allpep:
             pep=pep.drop(i,inplace=True)
+    
     print(str(len(pep))+" peptides remain after removing canonical peptides")
     
     pep = pep[~pep['Intensity'].isna()]
@@ -467,6 +471,8 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                          'log10_mod_to_ref_intensity_ratio_min_PEP',
                                          'longest_protein',
                                          'protein_length',
+                                         'position',
+                                         'position_relative',
                                          'longest_protein_status',
                                          'codon',
                                          'destination',
@@ -497,6 +503,8 @@ def substitution_quantification_with_2nd_pass(path_to_subs,path_to_2nd_evidence,
                                                           np.log10(min_PEP_intensity[dpseq] / min_PEP_intensity[bpseq]),
                                                           subs.at[i,'longest_protein'],
                                                           subs.at[i,'protein_length'],
+                                                          subs.at[i,'position'],
+                                                          subs.at[i,'position_relative'],
                                                           subs.at[i,'longest_protein_status'],
                                                           subs.at[i,'codon'],
                                                           subs.at[i,'destination'],
